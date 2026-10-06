@@ -1,0 +1,32 @@
+{
+  "page": 1,
+  "per_page": 2,
+  "total": 57,
+  "users": [
+    {
+      "id": 101,
+      "username": "mira",
+      "email": "mira@example.com",
+      "profile": {
+        "display_name": "Mira Chen",
+        "avatar_url": "https://example.com/a/101.png"
+      },
+      "roles": [
+        "admin"
+      ],
+      "last_login": "2026-09-30T08:12:00Z"
+    },
+    {
+      "id": 102,
+      "username": "tomas",
+      "email": null,
+      "profile": {
+        "display_name": "Tomas Berg",
+        "avatar_url": null
+      },
+      "roles": [],
+      "last_login": null,
+      "suspended": true
+    }
+  ]
+}

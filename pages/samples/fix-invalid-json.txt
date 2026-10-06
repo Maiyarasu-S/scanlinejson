@@ -1,0 +1,9 @@
+// settings exported from the admin panel
+{
+  name: 'Example shop',
+  currency: "EUR",
+  tax_rate: .2,
+  "features": ["search", "wishlist",],
+  "launch": “2026-11-01”,
+  "debug": True,
+  "limits": {"max_items": 500, "max_upload_mb": 25

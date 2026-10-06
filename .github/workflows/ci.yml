@@ -1,0 +1,65 @@
+# Runs the tests and a production build on every push and pull request.
+# It does not deploy: Cloudflare Pages builds and publishes on its own (see DEPLOY.md).
+# There is nothing to install: the project has no dependencies, so there is no install step.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      # A made-up but valid address. It exists so the production build's guard is exercised on every run:
+      # a placeholder, http, a trailing slash or a path would stop the build. The real address is set on Cloudflare Pages.
+      CI_SITE_URL: https://ci.scanline-test.dev
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node (the version in .node-version)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Confirm the pinned Node version is the one running
+        run: test "$(node --version)" = "v$(cat .node-version)"
+
+      - name: Logic tests
+        run: node tests/logic.test.js
+
+      - name: Production build guard tests
+        run: node tests/build-guard.test.js
+
+      - name: Production build with the dummy address
+        run: node build.js --production
+        env:
+          SITE_URL: ${{ env.CI_SITE_URL }}
+
+      - name: SEO tests on the built site
+        run: node tests/seo.test.js
+        env:
+          SITE_URL: ${{ env.CI_SITE_URL }}
+
+      - name: Host file tests (headers and redirects) on the built site
+        run: node tests/host.test.js
+
+      - name: Banned word test (source and the built site)
+        run: node tests/banned-word.test.js
+
+      - name: Production build refuses the placeholder address
+        run: |
+          if SITE_URL=https://example.com node build.js --production --out="$RUNNER_TEMP/refused"; then
+            echo "The production build accepted the placeholder address. The guard is broken."
+            exit 1
+          fi
+          if [ -e "$RUNNER_TEMP/refused" ]; then
+            echo "The refused build still wrote files."
+            exit 1
+          fi
+          echo "Refused, and nothing was written."

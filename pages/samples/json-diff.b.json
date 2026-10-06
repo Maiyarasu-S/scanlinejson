@@ -1,0 +1,20 @@
+{
+  "version": "2.5.0",
+  "service": "billing-api",
+  "replicas": 3.0,
+  "env": {
+    "LOG_LEVEL": "debug",
+    "TIMEOUT_S": 30,
+    "RETRIES": 3
+  },
+  "ports": [
+    8080,
+    9090
+  ],
+  "regions": [
+    "ap-south-1",
+    "eu-west-1",
+    "us-east-1"
+  ],
+  "owner": "payments-team"
+}

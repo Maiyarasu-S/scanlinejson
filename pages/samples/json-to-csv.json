@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "name": "Mira Chen",
+    "email": "mira@example.com",
+    "address": {
+      "city": "Lisbon",
+      "country": "PT"
+    },
+    "tags": [
+      "admin",
+      "billing"
+    ],
+    "active": true
+  },
+  {
+    "id": 2,
+    "name": "Tomas Berg",
+    "email": "tomas@example.com",
+    "address": {
+      "city": "Oslo",
+      "country": "NO"
+    },
+    "tags": [],
+    "active": false
+  },
+  {
+    "id": 3,
+    "name": "Lena Okafor",
+    "email": null,
+    "address": {
+      "city": "Lagos",
+      "country": "NG"
+    },
+    "tags": [
+      "ops"
+    ],
+    "active": true,
+    "note": "prefers \"Lena\", not \"Ms Okafor\""
+  },
+  {
+    "id": 4,
+    "name": "Ravi Patel",
+    "email": "ravi@example.com",
+    "address": {
+      "city": "Pune",
+      "country": "IN"
+    },
+    "tags": [
+      "research"
+    ],
+    "active": true
+  }
+]

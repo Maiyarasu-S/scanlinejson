@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "id",
+    "email",
+    "name"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "admin",
+          "editor",
+          "viewer"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "age": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

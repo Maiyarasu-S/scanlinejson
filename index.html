@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="green">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#040906">
+<title>Scanline JSON</title>
+<!--page:head-->
+<link rel="stylesheet" href="css/style.css">
+<!-- weights 500 and 600 and the symbol subset are not needed for the first paint. media="print" keeps this
+     stylesheet from blocking it; app.js switches it on once the page has loaded (no inline handler, so the page can run under a strict Content-Security-Policy) -->
+<link rel="stylesheet" href="css/fonts-lazy.css" media="print" data-lazy>
+</head>
+<body>
+<main>
+<div class="app">
+<div class="lede">
+  <h1>json formatter and validator</h1>
+  <p>runs in your browser, nothing is uploaded</p>
+</div>
+<header class="top">
+  <p class="ps1" aria-hidden="true">guest@json:~$</p>
+  <div class="qwrap" id="qwrap">
+    <input id="q" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
+           aria-label="Query. A path like $.users[0].name, or a jq-style filter" aria-describedby="qmsg">
+    <span class="ph" aria-hidden="true"><span id="cmd">fmt --indent=2</span><i class="cur"></i><span class="tip">type a query, e.g. $.users[0].name</span></span>
+  </div>
+  <p id="state" class="state" data-s="idle" role="status">IDLE</p>
+  <div class="acts">
+    <button type="button" id="fx" aria-pressed="true" title="Scanlines and glow">crt</button>
+    <button type="button" id="theme" title="Switch theme (Alt+T)">green</button>
+    <button type="button" id="helpBtn" title="Shortcuts and query syntax (?)" aria-haspopup="dialog">?</button>
+  </div>
+</header>
+
+<div class="panes">
+  <section class="pane" id="inPane" aria-label="Input">
+    <div class="bar">
+      <div class="ttl">
+        <h2>stdin</h2>
+        <div class="acts"><div class="seg" role="group" aria-label="Input tab">
+          <button type="button" data-buf="a" aria-pressed="true" title="Main document (Alt+1)">a</button>
+          <button type="button" data-buf="b" aria-pressed="false" title="Second document for diff, or a JSON Schema for validate (Alt+2)">b</button>
+        </div></div>
+      </div>
+      <div class="acts">
+        <button type="button" id="sample">sample</button>
+        <button type="button" id="open">open file</button>
+        <button type="button" id="format" title="Rewrite stdin as formatted JSON (Ctrl+Enter)">format</button>
+        <button type="button" id="undo" title="Undo the last format, auto-fix, load or clear" disabled>undo</button>
+        <button type="button" id="share" title="Copy a link that holds this input">share</button>
+        <button type="button" id="clear">clear</button>
+      </div>
+    </div>
+    <div class="ed" id="ed">
+      <div id="gut" aria-hidden="true"><pre id="nums">1</pre></div>
+      <div id="errline" hidden></div>
+      <textarea id="srcA" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="JSON input, tab a" placeholder="paste JSON here"></textarea>
+      <textarea id="srcB" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="JSON input, tab b" placeholder="tab b: a second document to diff against, or a JSON Schema to validate tab a" hidden></textarea>
+    </div>
+  </section>
+
+  <section class="pane" id="outPane" aria-label="Output">
+    <div class="bar">
+      <h2>stdout</h2>
+      <div class="acts">
+        <div class="seg" role="group" aria-label="JSON view">
+          <button type="button" data-mode="pretty" aria-pressed="true">pretty</button>
+          <button type="button" data-mode="min" aria-pressed="false">minify</button>
+        </div>
+        <div class="seg" role="group" aria-label="Convert to">
+          <button type="button" data-mode="yaml" aria-pressed="false">yaml</button>
+          <button type="button" data-mode="csv" aria-pressed="false">csv</button>
+          <button type="button" data-mode="ts" aria-pressed="false" title="TypeScript interfaces">ts</button>
+          <button type="button" data-mode="schema" aria-pressed="false" title="Generate a JSON Schema">schema</button>
+        </div>
+        <div class="seg" role="group" aria-label="Compare tabs a and b">
+          <button type="button" data-mode="diff" aria-pressed="false" title="Structural diff of tab a against tab b">diff</button>
+          <button type="button" data-mode="check" aria-pressed="false" title="Validate tab a against the JSON Schema in tab b">validate</button>
+        </div>
+      </div>
+    </div>
+    <div class="bar">
+      <div class="find">
+        <label for="find" aria-hidden="true">/</label>
+        <input id="find" type="search" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Search keys and values" placeholder="search keys and values">
+        <span id="findN" role="status"></span>
+        <div class="acts"><div class="seg" role="group" aria-label="Search in">
+          <button type="button" data-scope="all" aria-pressed="true">all</button>
+          <button type="button" data-scope="keys" aria-pressed="false">keys</button>
+          <button type="button" data-scope="values" aria-pressed="false">values</button>
+        </div></div>
+      </div>
+      <div class="acts">
+        <div class="seg" role="group" aria-label="Indent">
+          <button type="button" data-ind="2" aria-pressed="true">2</button>
+          <button type="button" data-ind="4" aria-pressed="false">4</button>
+          <button type="button" data-ind="tab" aria-pressed="false">tab</button>
+        </div>
+        <button type="button" id="sort" aria-pressed="false">sort keys</button>
+        <button type="button" id="fold">fold</button>
+        <button type="button" id="copy">copy</button>
+        <button type="button" id="save" title="Download the output as a file (Ctrl+S)">save</button>
+      </div>
+    </div>
+    <div class="out">
+      <div id="tree" tabindex="0" role="tree" aria-label="JSON tree. Arrow keys move, left and right fold" hidden></div>
+      <pre id="text" tabindex="0" hidden></pre>
+      <div id="list" hidden></div>
+      <div id="msg" hidden></div>
+    </div>
+    <div id="insp" hidden></div>
+  </section>
+</div>
+
+<footer class="status">
+  <p id="stats"></p>
+  <p id="qmsg" role="status"></p>
+  <p id="note" role="status"></p>
+  <p class="by">Made by <b>Maiyarasu S</b></p>
+</footer>
+</div>
+<!--page:doc-->
+</main>
+<!--page:site-->
+<input type="file" id="file" accept=".json,.jsonc,.jsonl,.ndjson,.json5,.txt,.log,application/json,text/plain" hidden>
+
+<dialog id="help" aria-labelledby="helpTitle">
+  <div class="bar">
+    <h2 id="helpTitle">help</h2>
+    <form method="dialog" class="acts"><button type="submit">close</button></form>
+  </div>
+  <div class="body">
+    <h3>QUERY (the prompt line)</h3>
+    <p>Type a path or a filter after <kbd>guest@json:~$</kbd>. JSONPath and a jq-style subset both work, and the output shows only the result. Convert, copy and save then apply to that result.</p>
+    <table>
+      <tr><td>$.users[0].name</td><td>one value by path. <kbd>.users[0].name</kbd> is the same thing</td></tr>
+      <tr><td>$["odd key"]  $.ports[-1]  $.ports[1:3]</td><td>quoted keys, counting from the end, slices</td></tr>
+      <tr><td>$.users[*].name  or  .users[].name</td><td>every item</td></tr>
+      <tr><td>$..name</td><td>that key at any depth</td></tr>
+      <tr><td>$.users[?(@.id &gt; 1001 &amp;&amp; @.sudo)]</td><td>filter. Operators: == != &lt; &lt;= &gt; &gt;= &amp;&amp; || !</td></tr>
+      <tr><td>.users[] | select(.sudo) | .name</td><td>the same idea in jq style, with pipes</td></tr>
+      <tr><td>.users | map(.name) | sort</td><td>build a new list</td></tr>
+      <tr><td>[.users[] | select(.sudo)] | length</td><td>collect matches into an array, then count</td></tr>
+    </table>
+    <p>Functions: length, keys, keys_unsorted, values, type, first, last, sort, sort_by(f), unique, reverse, flatten, add, min, max, to_entries, not, select(f), map(f), has(k), test(regex), contains(x), startswith(s), endswith(s).</p>
+
+    <h3>TABS A AND B</h3>
+    <p>stdin has two tabs. <kbd>diff</kbd> compares a with b by structure: key order is ignored, and an item inserted into an array counts once. <kbd>validate</kbd> checks tab a against the JSON Schema in tab b. Click any row in either list to open that spot in the tree.</p>
+
+    <h3>REPAIR</h3>
+    <p>When input is not valid JSON, the error view lists what auto-fix would change, line by line, before you apply it: comments, trailing or missing commas, single or smart quotes, bare keys, NaN and Infinity, hex and other number spellings, markdown code fences, JSONP wrappers, and input that was cut off. <kbd>undo</kbd> brings your original back.</p>
+
+    <h3>VALUE HINTS</h3>
+    <p>Links are clickable. Numbers that look like Unix times show the date. A badge after a string means it holds something: <kbd>{…}</kbd> JSON, <kbd>jwt</kbd> a token (decoded, never verified), <kbd>b64</kbd> base64 text. Click the badge, or press Enter on the row, to expand it in place. A token pasted on its own, with or without <kbd>Bearer</kbd> in front, is offered as <kbd>decode jwt</kbd> instead of a parse error. Decoding never checks the signature.</p>
+
+    <h3>KEYS</h3>
+    <table>
+      <tr><td><kbd>Ctrl+F</kbd> or <kbd>/</kbd></td><td>search the output: the tree, or the text of minify, yaml, csv and ts. <kbd>Enter</kbd> next match, <kbd>Shift+Enter</kbd> previous. Write <kbd>/pattern/</kbd> for a regular expression. In text output the keys and values buttons are off, and diff and validate switch to the tree</td></tr>
+      <tr><td><kbd>Alt+Q</kbd></td><td>go to the query prompt. <kbd>Esc</kbd> clears it</td></tr>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>move in the tree. Left and right fold and unfold, with <kbd>Shift</kbd> they do the whole branch</td></tr>
+      <tr><td><kbd>Enter</kbd> / <kbd>Ctrl+C</kbd> in the tree</td><td>fold or expand the row / copy the selected value</td></tr>
+      <tr><td><kbd>Ctrl+Enter</kbd></td><td>format stdin in place</td></tr>
+      <tr><td><kbd>Ctrl+S</kbd></td><td>save the output as a file</td></tr>
+      <tr><td><kbd>Alt+C</kbd> <kbd>Alt+M</kbd> <kbd>Alt+S</kbd> <kbd>Alt+F</kbd></td><td>copy, pretty or minify, sort keys, fold</td></tr>
+      <tr><td><kbd>Alt+1</kbd> <kbd>Alt+2</kbd> <kbd>Alt+T</kbd></td><td>tab a, tab b, next theme</td></tr>
+      <tr><td><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> in stdin</td><td>indent and outdent. Press <kbd>Esc</kbd> first to tab out of the box instead</td></tr>
+      <tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd> in stdin</td><td>also undo and redo format, auto-fix, load and clear</td></tr>
+    </table>
+    <p>On a Mac, use <kbd>Cmd</kbd> for <kbd>Ctrl</kbd> and <kbd>Option</kbd> for <kbd>Alt</kbd>.</p>
+
+    <h3>SAVED INPUT AND DISPLAY</h3>
+    <p>Both tabs are kept in this browser between visits, however large. If the browser cannot keep an input, a note says so. The <kbd>crt</kbd> button turns scanlines and glow off. The page also drops them, and brightens dim text and borders, when your system asks for more contrast.</p>
+
+    <h3>PRIVACY</h3>
+    <p>Everything runs in this page, and the fonts are served with it. Nothing you paste is sent anywhere. A share link holds the compressed input inside the link itself, so anyone you send the link to can read it.</p>
+    <p>What you paste is also saved in this browser, so it is still here on your next visit. On a shared computer, or after pasting a secret, clear it. This removes both tabs and your settings from this browser.</p>
+    <div class="acts"><button type="button" id="wipe">clear saved data</button></div>
+  </div>
+</dialog>
+<!--page:data-->
+
+<script src="js/core.js"></script>
+<script src="js/query.js"></script>
+<script src="js/convert.js"></script>
+<script src="js/diff.js"></script>
+<script src="js/schema.js"></script>
+<script src="js/hints.js"></script>
+<script src="js/find.js"></script>
+<script src="js/modes.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

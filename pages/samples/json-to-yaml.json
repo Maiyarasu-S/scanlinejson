@@ -1,0 +1,22 @@
+{
+  "service": "billing-api",
+  "version": "2.4.1",
+  "replicas": 3,
+  "enabled": true,
+  "env": {
+    "LOG_LEVEL": "info",
+    "FEATURE_FLAGS": "on",
+    "TIMEOUT_S": "30"
+  },
+  "ports": [
+    8080,
+    9090
+  ],
+  "healthcheck": {
+    "path": "/healthz",
+    "interval_s": 15
+  },
+  "release_notes": "Fixes rounding on invoices.\nAdds a retry on timeouts.\n",
+  "owner": null,
+  "since": "2026-03-14"
+}

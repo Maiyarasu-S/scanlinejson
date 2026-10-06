@@ -1,0 +1,38 @@
+{
+  "store": "example-books",
+  "currency": "EUR",
+  "updated_at": 1767225600,
+  "books": [
+    {
+      "id": 1,
+      "title": "The Pragmatic Path",
+      "author": "L. Ortiz",
+      "price": 32.5,
+      "tags": [
+        "programming"
+      ],
+      "in_stock": true
+    },
+    {
+      "id": 2,
+      "title": "Query Craft",
+      "author": "M. Chen",
+      "price": 18,
+      "tags": [
+        "data",
+        "json"
+      ],
+      "in_stock": false
+    },
+    {
+      "id": 3,
+      "title": "Small Tools",
+      "author": "R. Patel",
+      "price": 9.99,
+      "tags": [
+        "unix"
+      ],
+      "in_stock": true
+    }
+  ]
+}

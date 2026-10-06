@@ -1,0 +1,11 @@
+{
+  "id": 42,
+  "email": "mira@example",
+  "name": "Mira",
+  "roles": [
+    "admin",
+    "admin"
+  ],
+  "created": "yesterday",
+  "age": -3
+}

@@ -1,0 +1,15 @@
+{
+  "order_id": 9007199254740993,
+  "status": "paid",
+  "total": 41.50,
+  "currency": "EUR",
+  "items": [
+    { "sku": "KB-104", "qty": 1, "price": 32.00 },
+    { "sku": "MS-220", "qty": 2, "price": 4.75 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address": { "city": "Lisbon", "country": "PT" }
+  },
+  "notes": null
+}

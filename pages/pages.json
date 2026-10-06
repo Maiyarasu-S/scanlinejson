@@ -1,0 +1,377 @@
+[
+  {
+    "slug": "",
+    "nav": "json formatter",
+    "title": "JSON Formatter and Validator | Scanline JSON",
+    "metaDescription": "Format and validate JSON in your browser. Exact error positions, a foldable tree, duplicate key warnings and big numbers kept exact. Nothing is uploaded.",
+    "h1": "json formatter and validator",
+    "intro": "Paste JSON, drop a file or open one, and get a formatted, foldable tree, or the exact line and column of the first error. Everything happens in this page: your data is not uploaded, and the tool keeps working without a connection once it has loaded.",
+    "mode": "pretty",
+    "sections": [
+      {
+        "heading": "What it checks",
+        "paragraphs": [
+          "The parser is strict. Anything that is not valid JSON is reported with its line, its column and a caret under the problem, in plain words such as “Trailing comma before }” or “Keys need double quotes”. Valid input is shown as a tree you can fold, with 2-space, 4-space or tab indentation and an option to sort keys.",
+          "It also notices things a plain validator lets through. Duplicate keys are listed with the line of each copy, because most programs keep only the last one. Integers too large for JavaScript to hold exactly, such as `9007199254740993`, keep every digit. Several documents on separate lines are read as JSON Lines."
+        ]
+      },
+      {
+        "heading": "Large files and odd values",
+        "paragraphs": [
+          "Files up to 20 MB can be opened or dropped onto the input. Large input is parsed in a background thread so the page stays usable, and the tree draws the first levels, then fills in the rest as you open it.",
+          "Numbers that look like Unix timestamps show their date, links are clickable, and strings that hold JSON, base64 text or a JSON Web Token get a badge that expands them in place. Click any row to see its path, copy it, or use it as a query."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Is my JSON sent to a server?", "a": "No. Parsing, formatting and every other step run in this page. Input is saved in this browser so it survives a reload, and you can clear it from the help dialog." },
+      { "q": "Can it fix JSON that is not valid?", "a": "Often, yes. The error view lists the repairs auto-fix would make, such as removing comments or trailing commas, before you apply it. Undo brings your original back." },
+      { "q": "Does it change my numbers?", "a": "No. Numbers keep the spelling they were written with, so `1.50` stays `1.50` and long integers keep every digit." },
+      { "q": "Are there keyboard shortcuts?", "a": "Yes. Ctrl+Enter formats the input in place, Ctrl+F or / searches, the arrow keys move through the tree, and ? lists the rest." }
+    ],
+    "related": ["fix-invalid-json", "json-to-yaml", "json-diff", "json-path-query"],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-to-yaml",
+    "nav": "json to yaml",
+    "title": "JSON to YAML Converter | Scanline JSON",
+    "metaDescription": "Convert JSON to clean, block-style YAML in your browser. Keeps key order and exact numbers, and quotes strings YAML would misread.",
+    "h1": "json to yaml converter",
+    "intro": "Paste JSON and read it back as YAML, ready for a config file. The conversion runs in your browser and keeps your keys in their original order.",
+    "mode": "yaml",
+    "sample": { "a": "json-to-yaml.json", "name": "service.json" },
+    "sections": [
+      {
+        "heading": "How values are written",
+        "paragraphs": [
+          "Objects and arrays become YAML's indented block style, with two or four spaces per level. Strings stay unquoted when that is safe and get double quotes when YAML would read them as something else: `on`, `yes`, `null`, `\"30\"` and dates such as `2026-03-14` stay strings in the output.",
+          "Text with line breaks becomes a literal block (`|`) where that can keep every line exactly as it is. Where it cannot, for example a string with trailing spaces or unusual characters, it is written as a double-quoted string with escapes, so nothing is lost on the way."
+        ]
+      },
+      {
+        "heading": "Converting part of a document",
+        "paragraphs": [
+          "Type a query on the prompt line, such as `.env` or `$.spec.containers[0]`, and only that part is converted. Copy the result, or save it as a .yaml file.",
+          "Numbers keep their original spelling and long integers keep every digit, so IDs and version numbers come through unchanged. Turn on sort keys if you want a stable order for review."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Can it convert YAML back to JSON?", "a": "Not at the moment. This page goes from JSON to YAML only." },
+      { "q": "Will the YAML read back as the same data?", "a": "That is the aim. Strings that could pass for booleans, null, numbers or dates are quoted, and multi-line text uses a form that keeps its exact contents." },
+      { "q": "What if my JSON has errors?", "a": "The converter needs valid JSON. If yours is broken, the error view shows what is wrong and lists repairs you can apply first." },
+      { "q": "Is anything uploaded?", "a": "No. The conversion happens in this page, and nothing you paste leaves your browser." }
+    ],
+    "related": ["json-to-csv", "json-to-typescript", "", "json-path-query"],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-to-csv",
+    "nav": "json to csv",
+    "title": "JSON to CSV Converter | Scanline JSON",
+    "metaDescription": "Turn an array of JSON objects into CSV in your browser. Columns come from every row, and nested objects become dotted columns.",
+    "h1": "json to csv converter",
+    "intro": "Turn an array of JSON objects into CSV you can open in a spreadsheet. Columns are worked out from every row, not just the first, and the conversion runs in your browser.",
+    "mode": "csv",
+    "sample": { "a": "json-to-csv.json", "name": "people.json" },
+    "sections": [
+      {
+        "heading": "How rows and columns are built",
+        "paragraphs": [
+          "Each object in the array becomes one row. The header lists every key that appears in any row, in the order it is first seen, and a row without that key gets an empty cell. Nested objects are flattened into dotted names, so an address object with a city key becomes a column called `address.city`.",
+          "Arrays inside a row stay together in one cell, written as JSON, and null becomes an empty cell. An array of arrays is written row by row without a header, a list of plain values gets a single value column, and one object becomes one row."
+        ]
+      },
+      {
+        "heading": "Quoting and picking the data",
+        "paragraphs": [
+          "Cells that contain commas, double quotes or line breaks, or that start or end with a space, are wrapped in double quotes, with inner quotes doubled. That is the form spreadsheet programs expect.",
+          "If your rows sit inside a larger document, type a query such as `.users` or `$.data.items` on the prompt line and only that array is converted. Copy the result or save it as a .csv file."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Why is my output a single row?", "a": "One object becomes one row. Point the query at the array that holds your records, for example `.results`, and each item becomes a row." },
+      { "q": "What happens to nested arrays?", "a": "They stay in one cell as JSON text, so nothing is dropped. To get them as rows of their own, query that array and convert it on its own." },
+      { "q": "Can it convert CSV to JSON?", "a": "Not at the moment. This page goes from JSON to CSV only." },
+      { "q": "Is my data uploaded?", "a": "No. The conversion runs in this page, and nothing you paste is sent anywhere." }
+    ],
+    "related": ["json-path-query", "json-to-yaml", ""],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-to-typescript",
+    "nav": "json to typescript",
+    "title": "JSON to TypeScript Interfaces | Scanline JSON",
+    "metaDescription": "Generate TypeScript interfaces from sample JSON in your browser. Optional keys and unions are inferred from every item in your arrays.",
+    "h1": "json to typescript interfaces",
+    "intro": "Paste a sample API response and get TypeScript interfaces that describe it. The types are inferred from every item in your arrays, and everything runs in your browser.",
+    "mode": "ts",
+    "sample": { "a": "json-to-typescript.json", "name": "users-response.json" },
+    "sections": [
+      {
+        "heading": "How the types are inferred",
+        "paragraphs": [
+          "Every object gets an interface named after the key that holds it, so a `users` array gives you a `User` interface. All items of an array are read together: a key that appears in some items but not others becomes optional (`?`), and a key whose values differ in type becomes a union such as `string | null`.",
+          "Objects with exactly the same shape share one interface instead of producing copies. Keys that are not valid identifiers are quoted, numbers are typed as `number`, and an empty array becomes `unknown[]` because there is nothing to infer from."
+        ]
+      },
+      {
+        "heading": "Getting good results",
+        "paragraphs": [
+          "The interfaces are only as complete as the sample. Paste a response that includes the optional fields and null cases you care about, or several items in an array, and the types will cover them.",
+          "Use a query to generate types for one part of a document, choose 2 or 4 spaces of indentation, then copy the result or save it as a .d.ts file."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Does it write type or interface?", "a": "Objects become exported interfaces. When the top level is not an object, for example a plain array, the result is an exported type called `Root`." },
+      { "q": "Can it tell integers from decimals?", "a": "TypeScript has one number type, so both become `number`. The JSON Schema generator on this site does keep that difference." },
+      { "q": "Can it generate Zod or other schemas?", "a": "Not on this page. It writes TypeScript interfaces only." },
+      { "q": "Is my JSON sent anywhere?", "a": "No. The interfaces are generated in this page from the data you paste." }
+    ],
+    "related": ["json-schema-generator", "json-to-yaml", ""],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-schema-generator",
+    "nav": "json schema generator",
+    "title": "JSON Schema Generator from Sample JSON | Scanline",
+    "metaDescription": "Generate a draft 2020-12 JSON Schema from sample JSON in your browser: types, properties, required keys and array items.",
+    "h1": "json schema generator",
+    "intro": "Generate a JSON Schema from a sample document, as a starting point you then tighten by hand. It targets draft 2020-12 and is built in your browser.",
+    "mode": "schema",
+    "sample": { "a": "json-schema-generator.json", "name": "product.json" },
+    "sections": [
+      {
+        "heading": "What the schema describes",
+        "paragraphs": [
+          "The generator walks your sample and records the type of every value: object, array, string, integer, number, boolean or null. Objects get `properties`, and a key goes into `required` when it appears in every copy of that object. Arrays get an `items` schema built from all of their elements.",
+          "When a value has more than one type across the sample, plain types become a list such as `[\"string\", \"null\"]`, and any mix that includes an object or an array becomes `anyOf`. Integers and decimals are told apart, so `3` is an integer and `3.5` a number."
+        ]
+      },
+      {
+        "heading": "What to add yourself",
+        "paragraphs": [
+          "A schema made from one sample can only describe what it has seen. It does not guess formats, enums, minimum or maximum values, patterns or lengths. Add those where your data has rules, and check that every required key really is required.",
+          "The schema appears as a tree you can fold, copy or save as a .schema.json file. To test it, open the validator and put the schema in tab b, or press “generate a schema from tab a” there."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Which draft does it use?", "a": "Draft 2020-12, declared in `$schema`. The keywords it writes mean the same in draft-07, so older tools can read it too." },
+      { "q": "Why is a key missing from required?", "a": "At least one object in your sample does not have it. If the key must always be present, add it to `required` by hand." },
+      { "q": "Will the schema reject unexpected keys?", "a": "No. It does not add `additionalProperties: false`, so extra keys pass until you add that rule." },
+      { "q": "Is my data uploaded?", "a": "No. The schema is generated in this page." }
+    ],
+    "related": ["json-validator", "json-to-typescript", ""],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "fix-invalid-json",
+    "nav": "fix invalid json",
+    "title": "Fix Invalid JSON: Repair Broken JSON | Scanline",
+    "metaDescription": "Repair broken JSON in your browser: comments, trailing commas, single quotes, unquoted keys, cut-off input. Review every fix before applying it.",
+    "h1": "fix invalid json",
+    "intro": "Paste JSON that will not parse and see exactly what is wrong, with a list of repairs you can review before applying them. Nothing is uploaded: the repair runs in your browser.",
+    "mode": "pretty",
+    "sample": { "a": "fix-invalid-json.txt", "name": "settings.txt" },
+    "sections": [
+      {
+        "heading": "What auto-fix can repair",
+        "paragraphs": [
+          "Comments, trailing commas, missing commas between items, single quotes and curly “smart” quotes, unquoted keys, and the words `NaN`, `Infinity`, `undefined`, `None`, `True` and `False`, which become null, true or false. Hex numbers and spellings such as `.5`, `5.` or `+1` become plain JSON numbers.",
+          "It also unwraps the forms JSON often arrives in: a markdown code fence copied from a chat or a README, with or without text around it, and JSONP callbacks such as `callback({...})`. Input that was cut off is closed where it ends."
+        ]
+      },
+      {
+        "heading": "How the repair works",
+        "paragraphs": [
+          "The page parses strictly first and reports the first error with its line, column and a caret. If the input can be repaired, it lists the changes with their positions (the first 200, with a count of the rest), and clicking a change jumps to it. Nothing changes until you press apply.",
+          "Applying rewrites the input as strict JSON, and undo brings back your original. When a document cannot be repaired safely, for example when a colon is missing between a key and its value, the error stays and points at the spot to fix by hand."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Will it guess missing data?", "a": "Only at the end of cut-off input. A value that was cut off is written as `null`, a key cut off before its value is dropped, and unfinished objects and arrays are closed. A value missing in the middle of a document is an error, not something it fills in." },
+      { "q": "Does it keep my comments?", "a": "No. JSON has no comments, so they are removed. Undo restores your original if you need them." },
+      { "q": "Can it repair JSON Lines?", "a": "Yes. Documents on separate lines are repaired one by one and written back one per line." },
+      { "q": "Is the broken JSON uploaded?", "a": "No. Parsing and repair both run in this page." }
+    ],
+    "related": ["", "json-minify", "json-validator"],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-diff",
+    "nav": "json diff",
+    "title": "JSON Diff: Compare Two JSON Documents | Scanline",
+    "metaDescription": "Compare two JSON documents by structure in your browser. Key order is ignored, and array insertions show as one change. Nothing is uploaded.",
+    "h1": "json diff",
+    "intro": "Compare two JSON documents by their structure, not their text. Paste one into tab a and the other into tab b to see what was added, removed or changed, path by path.",
+    "mode": "diff",
+    "sample": { "a": "json-diff.a.json", "b": "json-diff.b.json", "name": "config-v1.json" },
+    "sections": [
+      {
+        "heading": "What counts as a difference",
+        "paragraphs": [
+          "Objects are compared key by key, so a different key order is not a change. Numbers are compared by value, so `1` and `1.0` are equal, while very long integers are compared digit by digit. Every difference is listed with its path, such as `$.env.LOG_LEVEL`, and the values on each side.",
+          "Arrays are lined up before they are compared. When one item is inserted near the start of a list, you see one addition rather than a change to every item after it. Items that changed in place are compared inside, so you see which field changed."
+        ]
+      },
+      {
+        "heading": "Reading and saving the result",
+        "paragraphs": [
+          "Additions, removals and changes are marked `+`, `-` and `~` and counted at the top. Click any row to open that spot in the tree of the document it belongs to. Copy puts the list on the clipboard, and save writes it as a text file.",
+          "Very long arrays that would take too long to line up are compared position by position, and the list shows the first 2,000 differences with the total."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Why does reordering keys show no difference?", "a": "In JSON, key order carries no meaning, so this diff ignores it. For a line-by-line comparison, format both documents and use a text diff." },
+      { "q": "What about duplicate keys?", "a": "When an object repeats a key, the last value is compared, which is how most programs read it. The formatter lists duplicate keys if you want to find them." },
+      { "q": "Can it ignore the order of an array?", "a": "Not at the moment. Arrays are compared in order, with insertions and removals detected." },
+      { "q": "Are the documents uploaded?", "a": "No. Both tabs are compared in this page." }
+    ],
+    "related": ["", "json-validator", "json-path-query"],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-validator",
+    "nav": "json schema validator",
+    "title": "JSON Schema Validator | Scanline JSON",
+    "metaDescription": "Check JSON against a JSON Schema in your browser, using the common draft 2020-12 and draft-07 keywords. Every problem shows its path. Nothing is uploaded.",
+    "h1": "json schema validator",
+    "intro": "Check a JSON document against a JSON Schema. Paste the document into tab a and the schema into tab b, and every problem is listed with its path and a plain explanation.",
+    "mode": "check",
+    "sample": { "a": "json-validator.a.json", "b": "json-validator.b.json", "name": "user.json" },
+    "sections": [
+      {
+        "heading": "What it checks",
+        "paragraphs": [
+          "Validation covers the keywords most schemas use: types, enum and const, properties, required, additional and pattern properties, items and prefixItems, contains, length and size limits, minimum and maximum, multipleOf, pattern, allOf, anyOf, oneOf, not, if, then and else, and `$ref` to somewhere inside the same schema. Both draft 2020-12 and draft-07 spellings are accepted.",
+          "The formats date-time, date, time, email, uri, uuid, ipv4 and hostname are checked as rules. Each problem shows its path, such as `$.roles`, and what is wrong."
+        ]
+      },
+      {
+        "heading": "What is not checked",
+        "paragraphs": [
+          "These keywords are skipped, and the result names any that your schema uses: unevaluatedProperties, unevaluatedItems, dependentSchemas, `$dynamicRef`, `$recursiveRef` and contentSchema. A `$ref` is followed only when it points inside the same schema, such as `#/$defs/name`. References to other files, URLs and anchors are reported and not followed.",
+          "Some limits are not reported. A format outside the list above is accepted unchecked, and a misspelled or unknown keyword is ignored. Minimum, maximum and multipleOf use ordinary floating-point numbers, so integers beyond 2^53 are compared only approximately. The schema itself is not checked for mistakes.",
+          "No schema yet? Press “generate a schema from tab a” to start from one that matches your document, then tighten it."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Which drafts are supported?", "a": "Keywords from draft 2020-12 and draft-07 are both understood, including both ways of describing tuples. The tool does not read `$schema`, so it never switches rules by draft." },
+      { "q": "Why does it say a keyword was not checked?", "a": "That keyword is outside what this validator evaluates. The note names what it skipped; it cannot name what it does not recognise, such as a misspelled keyword." },
+      { "q": "Does a pass mean my data is fully valid?", "a": "It means the checked keywords found no problem. Read the note under the result for skipped keywords and references it did not follow." },
+      { "q": "How many errors does it show?", "a": "Up to 2,000. Click any of them to open that value in the tree." },
+      { "q": "Is my schema or data uploaded?", "a": "No. Validation runs in this page." }
+    ],
+    "related": ["json-schema-generator", "json-diff", ""],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-path-query",
+    "nav": "jsonpath and jq",
+    "title": "JSONPath and jq Query Tester | Scanline JSON",
+    "metaDescription": "Test JSONPath expressions and jq-style filters on your own JSON in your browser. Results keep their paths and can be exported. Nothing is uploaded.",
+    "h1": "jsonpath and jq query tester",
+    "intro": "Test JSONPath expressions and jq-style filters against your own JSON. Type on the prompt line and the output shows only what matched. Select a result to see its path in the document.",
+    "mode": "pretty",
+    "sample": { "a": "json-path-query.json", "q": ".books[] | select(.price < 20) | .title", "name": "books.json" },
+    "sections": [
+      {
+        "heading": "The syntax",
+        "paragraphs": [
+          "JSONPath works as you would expect: `$.books[0].title`, quoted keys like `$[\"odd key\"]`, negative indexes and slices like `$.books[-1]` and `$.books[0:2]`, wildcards like `$.books[*].author`, recursive descent like `$..id`, and filters like `$.books[?(@.price < 20 && @.in_stock)]`.",
+          "The jq style adds pipes and functions, as in `.books | map(.title) | sort` or `[.books[] | select(.in_stock)] | length`. Functions include length, keys, values, type, first, last, sort, sort_by, unique, reverse, flatten, add, min, max, to_entries, select, map, has, test, contains, startswith and endswith."
+        ]
+      },
+      {
+        "heading": "Working with results",
+        "paragraphs": [
+          "While you type, a query that is not finished keeps the last good result on screen and says what is wrong, with the column. Results taken from the document keep their real paths. Copy, save and the converters apply to the result, so you can query an array and export it as CSV in one step.",
+          "Click any row in the tree and choose “query this” to start from its path."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Is this full jq?", "a": "No. It is a practical subset for reading data: paths, pipes, filters, comparisons and the functions listed above. Variables, reduce, string interpolation and arithmetic are not supported." },
+      { "q": "Can a query change my data?", "a": "No. Queries only read; your input is never modified by them." },
+      { "q": "Are long numbers compared correctly?", "a": "Yes. Integers beyond JavaScript's safe range are compared digit by digit." },
+      { "q": "Is my data sent anywhere?", "a": "No. Queries run in this page." }
+    ],
+    "related": ["json-to-csv", "", "decode-jwt"],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "json-minify",
+    "nav": "json minifier",
+    "title": "JSON Minifier | Scanline JSON",
+    "metaDescription": "Minify JSON in your browser. Removes whitespace, keeps key order and exact numbers, and shows the bytes saved.",
+    "h1": "json minifier",
+    "intro": "Remove every unneeded space and line break from JSON to make it as small as it can be. The minifier runs in your browser and shows how many bytes you saved.",
+    "mode": "min",
+    "sample": { "a": "json-minify.json", "name": "order.json" },
+    "sections": [
+      {
+        "heading": "What changes and what does not",
+        "paragraphs": [
+          "The whitespace between values is removed; spaces inside strings are part of the data and stay. Key order and number spelling stay exactly as written, so `41.50` stays `41.50` and an ID such as `9007199254740993` keeps every digit. The data is identical, but escape sequences in strings are written in their plain form: `\\u00e9` becomes `é` and `\\/` becomes `/`. Turn on sort keys if you also want a stable order, for example before comparing two files.",
+          "JSON Lines input stays one document per line, which is what tools that read .jsonl files expect, and saving gives you a .jsonl file."
+        ]
+      },
+      {
+        "heading": "Using the result",
+        "paragraphs": [
+          "The status line shows the size before and after, and the change in percent. Copy the result, save it as a .min.json file, or press format to replace the input with the minified version; undo puts the original back.",
+          "Input that is not valid JSON is not minified. The error view shows what is wrong and offers repairs you can apply first."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Is minified JSON still valid JSON?", "a": "Yes. Whitespace between values has no meaning in JSON, so the data is identical." },
+      { "q": "Does it compress the file?", "a": "No. It only makes the text shorter. Web servers usually compress JSON with gzip or brotli on top of that." },
+      { "q": "Can I make it readable again?", "a": "Yes. Switch to pretty to see it formatted with 2 spaces, 4 spaces or tabs." },
+      { "q": "Is my JSON uploaded?", "a": "No. Minifying happens in this page." }
+    ],
+    "related": ["", "fix-invalid-json", "json-diff"],
+    "updated": "2026-10-06"
+  },
+  {
+    "slug": "decode-jwt",
+    "nav": "jwt decoder",
+    "title": "JWT Decoder: Read Token Header and Payload | Scanline",
+    "metaDescription": "Decode a JSON Web Token in your browser: header, payload and expiry as readable JSON. The signature is not verified. Nothing is uploaded.",
+    "h1": "jwt decoder",
+    "intro": "Paste a JSON Web Token to read its header and payload as formatted JSON, with the times in it shown as dates. Decoding happens in your browser, and the token is not sent anywhere.",
+    "mode": "pretty",
+    "sample": { "a": "decode-jwt.txt", "name": "token.txt" },
+    "sections": [
+      {
+        "heading": "What you can paste",
+        "paragraphs": [
+          "A bare token such as `eyJhbGciOi…`, the same token after `Bearer ` as copied from an Authorization header, or any JSON that holds tokens as string values. A bare token gets a decode jwt button; tokens inside JSON get a jwt badge you can click to expand.",
+          "The header and payload are decoded from base64url and shown as a tree. Claims such as `exp`, `iat` and `nbf` show the date they stand for, and selecting the token shows its algorithm and whether it has expired."
+        ]
+      },
+      {
+        "heading": "What decoding does not do",
+        "paragraphs": [
+          "The signature is not verified. Decoding shows what the token says, but it cannot tell you whether the token is genuine; that takes the signing key and a check on your server. Encrypted tokens (JWE) cannot be read here either.",
+          "Tokens are often credentials. Nothing is uploaded, but what you paste is saved in this browser between visits, so on a shared computer use “clear saved data” in the help dialog when you are done."
+        ]
+      }
+    ],
+    "faq": [
+      { "q": "Is it safe to paste a token here?", "a": "The token stays in this page and is not uploaded. It is saved in this browser until you clear it, so treat a live token with the same care as a password." },
+      { "q": "Does it check the signature?", "a": "No. It only decodes. Anyone can create a token with any payload, so never trust its contents without verifying the signature on your server." },
+      { "q": "Why is my token reported as invalid JSON?", "a": "Extra text around it, such as a header name, stops it being recognised as a bare token. Paste just the token, optionally after `Bearer `." },
+      { "q": "Can it decode encrypted tokens?", "a": "No. Encrypted tokens (JWE) have five parts and cannot be read without the key. Only tokens with a readable header and payload can be decoded." }
+    ],
+    "related": ["", "json-path-query", "fix-invalid-json"],
+    "updated": "2026-10-06"
+  }
+]

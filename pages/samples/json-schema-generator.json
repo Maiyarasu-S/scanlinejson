@@ -1,0 +1,25 @@
+{
+  "sku": "KB-104",
+  "name": "Mechanical keyboard",
+  "price": 89.5,
+  "in_stock": true,
+  "tags": [
+    "keyboard",
+    "usb-c"
+  ],
+  "dimensions": {
+    "width_mm": 360,
+    "depth_mm": 125
+  },
+  "variants": [
+    {
+      "color": "black",
+      "stock": 12
+    },
+    {
+      "color": "white",
+      "stock": 0,
+      "discontinued": true
+    }
+  ]
+}

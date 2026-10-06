@@ -1,0 +1,13 @@
+{
+  "name": "scanline-json",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A JSON formatter, repair tool and explorer that runs entirely in the browser.",
+  "scripts": {
+    "build": "node build.js",
+    "build:single": "node build.js --single",
+    "build:production": "node build.js --production",
+    "serve": "node tools/serve.js",
+    "test": "node tests/logic.test.js && node tests/build-guard.test.js && node build.js && node tests/seo.test.js && node tests/host.test.js && node tests/banned-word.test.js"
+  }
+}
