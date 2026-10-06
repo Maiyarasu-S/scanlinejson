@@ -145,6 +145,7 @@ function site() {
     const head = [
       '<meta name="description" content="' + esc(p.metaDescription) + '">',
       '<meta name="author" content="' + esc(cfg.author) + '">',
+      ...(!p.slug && cfg.googleVerification ? ['<meta name="google-site-verification" content="' + esc(cfg.googleVerification) + '">'] : []),
       '<link rel="canonical" href="' + esc(url) + '">',
       '<meta property="og:type" content="website">',
       '<meta property="og:site_name" content="' + esc(cfg.name) + '">',

@@ -87,7 +87,9 @@ for (const pg of [...pages, notFound]) {
   const canon = (tags(html, 'link').find(a => a.rel === 'canonical') || {}).href;
   ok(canon && /^https?:\/\//.test(canon), name + ': canonical is absolute', canon);
   ok(canon === base + pg.url, name + ': canonical matches the page address', canon);
-  ok(meta(html, 'property', 'og:url') === canon && meta(html, 'property', 'og:title') && meta(html, 'property', 'og:description') && meta(html, 'property', 'og:type'), name + ': Open Graph tags');
+  /* the Search Console ownership tag: on the home page only, and only when site.config.json has a code */
+  ok(meta(html, 'name', 'google-site-verification') === (pg.url === '/' && cfg.googleVerification ? cfg.googleVerification : undefined), name + ': Google verification tag only on the home page', meta(html, 'name', 'google-site-verification'));
+  ok(meta(html, 'property', 'og:url') === canon &&meta(html, 'property', 'og:title') && meta(html, 'property', 'og:description') && meta(html, 'property', 'og:type'), name + ': Open Graph tags');
   ok(meta(html, 'name', 'twitter:card') === 'summary_large_image' && meta(html, 'name', 'twitter:title') && meta(html, 'name', 'twitter:description'), name + ': Twitter card tags');
   const img = meta(html, 'property', 'og:image');
   ok(img && img.startsWith(base + '/') && meta(html, 'name', 'twitter:image') === img, name + ': share image is absolute', img);
