@@ -5,6 +5,9 @@
 const MODES = ['pretty', 'min', 'yaml', 'csv', 'ts', 'schema', 'diff', 'check'];
 const TREE = { pretty: 1, schema: 1 };
 const isMode = m => MODES.indexOf(m) >= 0;
+/* the plain word for a mode on the view button and in its menu (the prompt line keeps the command form) */
+const LABEL = { pretty: 'pretty', min: 'minify', yaml: 'yaml', csv: 'csv', ts: 'ts', schema: 'schema', diff: 'diff', check: 'validate' };
+const label = m => LABEL[m] || 'pretty';
 
 /* The command shown on the prompt line, e.g. "convert --to=yaml --indent=2". */
 function prompt(o) {
@@ -40,5 +43,5 @@ function start(o) {
 /* This app's localStorage keys among `keys`: each base key itself, and anything stored under "base.". */
 const ownKeys = (keys, bases) => keys.filter(k => bases.some(b => k === b || k.startsWith(b + '.')));
 
-JF.modes = { MODES, isMode, prompt, start, ownKeys };
+JF.modes = { MODES, LABEL, label, isMode, prompt, start, ownKeys };
 })();

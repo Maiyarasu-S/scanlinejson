@@ -277,6 +277,8 @@ eq(['pretty', 'min', 'yaml', 'csv', 'ts', 'schema', 'diff', 'check'].map(m => M.
   ['fmt --indent=2', 'fmt --minify', 'convert --to=yaml --indent=2', 'convert --to=csv', 'convert --to=ts --indent=2', 'fmt --to=schema --indent=2', 'diff a b', 'validate a --schema=b'], 'prompt text per mode');
 eq([M.prompt({ mode: 'pretty', ind: 'tab', sort: true }), M.prompt({ mode: 'min', sort: true }), M.prompt({ mode: 'ts', ind: '4', sort: true }), M.prompt({ mode: 'yaml' })],
   ['fmt --indent=tab --sort-keys', 'fmt --minify --sort-keys', 'convert --to=ts --indent=4', 'convert --to=yaml --indent=2'], 'prompt text with indent and sort');
+eq(M.MODES.map(M.label), ['pretty', 'minify', 'yaml', 'csv', 'ts', 'schema', 'diff', 'validate'], 'view labels: a plain word for every mode');
+eq([M.label('nope'), M.label(undefined)], ['pretty', 'pretty'], 'view labels: an unknown mode reads as pretty');
 const S0 = { sample: 'SAMPLE' }, SH = { a: 'x', b: 'y', q: '.a', m: 'diff' }, PG = { mode: 'yaml', a: 'PA', b: 'PB', q: '.p', name: 'p.json' };
 const TB = { a: { text: 'TA', name: 'ta.json' }, b: null }, SV = { mode: 'csv', buf: 'b' };
 const st0 = o => (r => [r.mode, r.a.text, r.a.name, r.b.text, r.q, r.buf, r.from])(M.start(Object.assign({}, S0, o)));
