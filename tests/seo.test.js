@@ -120,7 +120,7 @@ for (const pg of [...pages, notFound]) {
 
   /* the tool opens in the page's mode, and the prompt line says so */
   const seed = JSON.parse((/<script type="application\/json" id="page">([\s\S]*?)<\/script>/.exec(html) || [, '{}'])[1]);
-  const pressed = tags(html, 'button').filter(a => a['data-mode'] && a['aria-pressed'] === 'true').map(a => a['data-mode']);
+  const pressed = tags(html, 'button').filter(a => a['data-mode'] && (a['aria-pressed'] === 'true' || a['aria-checked'] === 'true')).map(a => a['data-mode']);
   const cmd = (/<span id="cmd">([^<]*)<\/span>/.exec(html) || [])[1];
   ok(ctx.JF.modes.isMode(seed.mode) && pressed.join() === seed.mode && cmd === ctx.JF.modes.prompt({ mode: seed.mode }), name + ': opens in its mode with a matching prompt', { mode: seed.mode, pressed, cmd });
 

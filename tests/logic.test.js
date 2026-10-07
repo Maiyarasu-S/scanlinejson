@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const dir = path.join(__dirname, '..', 'js');
-for (const f of ['core.js', 'query.js', 'convert.js', 'diff.js', 'schema.js', 'hints.js', 'find.js', 'modes.js'])
+for (const f of ['core.js', 'query.js', 'convert.js', 'diff.js', 'schema.js', 'hints.js', 'find.js', 'layout.js', 'modes.js'])
   vm.runInThisContext(fs.readFileSync(path.join(dir, f), 'utf8'), { filename: f });
 
 const C = JF.core;
@@ -291,6 +291,52 @@ eq(st0({ page: PG, saved: SV, tabs: TB, shared: SH }), ['diff', 'x', 'shared', '
 eq([st0({ page: { mode: 'nope' }, saved: { mode: 'bad' } })[0], st0({ page: { mode: 'check' } })[0]], ['pretty', 'check'], 'start: unknown modes are ignored');
 eq(M.ownKeys(['scanline-json', 'scanline-json.a', 'scanline-json.b', 'scanline-jsonx', 'other', 'other.scanline-json'], ['scanline-json']),
   ['scanline-json', 'scanline-json.a', 'scanline-json.b'], "clear saved data picks only this app's keys");
+
+/* ---------- layout: divider, text size, brackets, stdin colours ---------- */
+const LY = JF.layout;
+eq([LY.clampRatio(0.5), LY.clampRatio(0), LY.clampRatio(2), LY.clampRatio(NaN), LY.clampRatio('x'), LY.clampRatio(null)], [0.5, 0.15, 0.85, null, null, null], 'divider ratio is kept in range');
+eq(LY.normSplit(null), { h: 0.5, v: 0.4 }, 'divider: nothing saved gives the defaults');
+eq(LY.normSplit({ h: 0.3, v: 9 }), { h: 0.3, v: 0.85 }, 'divider: saved ratios are clamped');
+eq(LY.normSplit({ h: 'big', v: [] }), { h: 0.5, v: 0.4 }, 'divider: junk falls back to the defaults');
+eq(LY.normSplit('x'), { h: 0.5, v: 0.4 }, 'divider: a non-object falls back to the defaults');
+eq(LY.ratioAt(515, 10, 1010, 10, 200), 0.5, 'ratioAt: the divider centres on the pointer');
+eq(LY.ratioAt(0, 0, 1010, 10, 200), 0.2, 'ratioAt: the left pane keeps its minimum width');
+eq(LY.ratioAt(5000, 0, 1010, 10, 200), 0.8, 'ratioAt: the right pane keeps its minimum width');
+eq(LY.ratioAt(30, 0, 400, 10, 200), 0.5, 'ratioAt: in a space too small for two minimums it stays at half');
+eq(LY.ratioAt(5, 0, 0, 10, 200), 0.5, 'ratioAt: no room gives the default');
+eq(LY.shares(0.5), [50, 50], 'shares: fr values add up to 100, so the grid always fills');
+eq(LY.shares(0.4), [40, 60], 'shares: 40/60');
+eq([LY.nudge(0.5, 0.03), LY.nudge(0.16, -0.03), LY.nudge(0.84, 0.03)], [0.53, 0.15, 0.85], 'nudge steps and stops at the ends');
+eq([LY.normFs(0), LY.normFs(13), LY.normFs(13.4), LY.normFs(3), LY.normFs(99), LY.normFs('13'), LY.normFs(NaN), LY.normFs(-5)], [0, 13, 13, 10, 28, 0, 0, 0], 'text size is whole pixels within 10 to 28; 0 means the default');
+eq([LY.metrics(13), LY.metrics(16), LY.metrics(10)], [{ fs: 13, lh: 20 }, { fs: 16, lh: 24 }, { fs: 10, lh: 15 }], 'text size: the line height is a whole number of pixels');
+eq(LY.caretPos('ab\ncd\nef', 0), { line: 1, col: 1 }, 'caret: start');
+eq(LY.caretPos('ab\ncd\nef', 2), { line: 1, col: 3 }, 'caret: end of the first line');
+eq(LY.caretPos('ab\ncd\nef', 3), { line: 2, col: 1 }, 'caret: start of the second line');
+eq(LY.caretPos('ab\ncd\nef', 8), { line: 3, col: 3 }, 'caret: end of the text');
+eq(LY.caretPos('', 0), { line: 1, col: 1 }, 'caret: empty text');
+const pr = t => [...LY.pairs(t)].sort((x, y) => x[0] - y[0]).map(x => x.join('>')).join(' ');
+eq(pr('{"a":[1,2]}'), '0>10 5>9 9>5 10>0', 'brackets: nested pairs');
+eq(pr('{"a":"}]{["}'), '0>11 11>0', 'brackets: brackets inside strings are ignored');
+eq(pr('{"a":"x\\"}"}'), '0>11 11>0', 'brackets: an escaped quote does not end the string');
+eq(pr('[ // ]\n 1 ]'), '0>10 10>0', 'brackets: a line comment is skipped');
+eq(pr('[ /* ] */ 1 ]'), '0>12 12>0', 'brackets: a block comment is skipped');
+eq(pr('{[}]'), '0>-1 1>3 2>-1 3>1', 'brackets: a closer of the wrong kind matches nothing, the rest still pair');
+eq(pr('[1,2'), '0>-1', 'brackets: one never closed has no partner');
+eq(pr('1]'), '1>-1', 'brackets: a closer with no opener has no partner');
+{
+  const t = '{"a":[1]}', m = LY.pairs(t);
+  eq([LY.touching(t, 1, m), LY.touching(t, 0, m), LY.touching(t, 9, m), LY.touching(t, 3, m)], [{ at: 0, to: 8 }, { at: 0, to: 8 }, { at: 8, to: 0 }, null], 'touching: the bracket before the caret wins, else the one after');
+  eq(LY.touching('[', 1, LY.pairs('[')), { at: 0, to: -1 }, 'touching: an unmatched bracket is reported with no partner');
+}
+const strip = h => h.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+for (const t of ['{"a":[1,2,true,null],"b":"x<y&z"}', '', '\n\n', 'not json <b>"q"</b> & more', '{"a":"unterminated', '[1,\t2,\r\n3]', '"\\u00e9"']) {
+  const m = LY.pairs(t);
+  eq([strip(LY.highlight(t, null)), strip(LY.highlight(t, LY.touching(t, 1, m)))], [t, t], 'highlight keeps the text exactly: ' + JSON.stringify(t).slice(0, 30));
+}
+ok(/<span class="k">&quot;a&quot;<\/span>/.test(LY.highlight('{"a":1}', null)) && /<span class="nu">1<\/span>/.test(LY.highlight('{"a":1}', null)), 'highlight colours keys and numbers');
+eq((LY.highlight('[]', { at: 0, to: 1 }).match(/<mark/g) || []).length, 2, 'highlight marks both brackets of a pair');
+ok(/<mark data-m="0" class="now">/.test(LY.highlight('[', { at: 0, to: -1 })), 'highlight flags a bracket with no partner');
+ok(LY.HL_MAX === 200000, 'syntax colours stop above 200,000 characters');
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

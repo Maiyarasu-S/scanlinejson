@@ -41,7 +41,7 @@
         <div class="acts"><div class="seg" role="group" aria-label="Input tab">
           <button type="button" data-buf="a" aria-pressed="true" title="Main document (Alt+1)">a</button>
           <button type="button" data-buf="b" aria-pressed="false" title="Second document for diff, or a JSON Schema for validate (Alt+2)">b</button>
-        </div></div>
+        </div><button type="button" id="maxIn" data-max="in" aria-pressed="false" title="Fill the window with stdin">max</button></div>
       </div>
       <div class="acts">
         <button type="button" id="sample">sample</button>
@@ -52,27 +52,42 @@
         <button type="button" id="clear">clear</button>
       </div>
     </div>
+    <div class="bar bar2">
+      <p id="caret" class="pos">ln 1, col 1</p>
+      <div class="acts">
+        <button type="button" id="wrap" aria-pressed="false" title="Wrap long lines. Line numbers and the error line are hidden while wrapped">wrap</button>
+        <button type="button" id="hlBtn" aria-pressed="true" title="Colour the syntax and mark matching brackets (off for input over 200 KB)">syntax</button>
+        <div class="seg" role="group" aria-label="Text size">
+          <button type="button" id="fsDown" title="Smaller text" aria-label="Smaller text">A-</button>
+          <button type="button" id="fsVal" title="Back to the default text size" aria-label="Text size, press to reset">13px</button>
+          <button type="button" id="fsUp" title="Larger text" aria-label="Larger text">A+</button>
+        </div>
+      </div>
+    </div>
     <div class="ed" id="ed">
       <div id="gut" aria-hidden="true"><pre id="nums">1</pre></div>
       <div id="errline" hidden></div>
+      <div id="hl" aria-hidden="true"><pre id="hlin"></pre></div>
       <textarea id="srcA" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="JSON input, tab a" placeholder="paste JSON here"></textarea>
       <textarea id="srcB" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="JSON input, tab b" placeholder="tab b: a second document to diff against, or a JSON Schema to validate tab a" hidden></textarea>
     </div>
   </section>
 
+  <div class="split" id="split" role="separator" aria-orientation="vertical" aria-label="Resize stdin and stdout. Arrow keys move it, Enter resets" aria-valuemin="15" aria-valuemax="85" aria-valuenow="50" tabindex="0" title="Drag to resize. Double-click to reset"></div>
+
   <section class="pane" id="outPane" aria-label="Output">
     <div class="bar">
-      <h2>stdout</h2>
+      <div class="ttl">
+        <h2>stdout</h2>
+        <div class="acts"><button type="button" id="maxOut" data-max="out" aria-pressed="false" title="Fill the window with stdout">max</button></div>
+      </div>
       <div class="acts">
         <div class="seg" role="group" aria-label="JSON view">
           <button type="button" data-mode="pretty" aria-pressed="true">pretty</button>
           <button type="button" data-mode="min" aria-pressed="false">minify</button>
         </div>
-        <div class="seg" role="group" aria-label="Convert to">
-          <button type="button" data-mode="yaml" aria-pressed="false">yaml</button>
-          <button type="button" data-mode="csv" aria-pressed="false">csv</button>
-          <button type="button" data-mode="ts" aria-pressed="false" title="TypeScript interfaces">ts</button>
-          <button type="button" data-mode="schema" aria-pressed="false" title="Generate a JSON Schema">schema</button>
+        <div class="seg" role="group" aria-label="Convert">
+          <button type="button" id="convert" aria-haspopup="menu" aria-expanded="false" aria-controls="cmenu" aria-pressed="false" title="Convert to YAML, CSV, TypeScript or a JSON Schema">convert</button>
         </div>
         <div class="seg" role="group" aria-label="Compare tabs a and b">
           <button type="button" data-mode="diff" aria-pressed="false" title="Structural diff of tab a against tab b">diff</button>
@@ -123,6 +138,12 @@
 <!--page:doc-->
 </main>
 <!--page:site-->
+<div id="cmenu" class="menu" role="menu" aria-label="Convert to" hidden>
+  <button type="button" role="menuitemradio" aria-checked="false" data-mode="yaml">yaml</button>
+  <button type="button" role="menuitemradio" aria-checked="false" data-mode="csv">csv</button>
+  <button type="button" role="menuitemradio" aria-checked="false" data-mode="ts">ts<span>typescript interfaces</span></button>
+  <button type="button" role="menuitemradio" aria-checked="false" data-mode="schema">schema<span>json schema</span></button>
+</div>
 <input type="file" id="file" accept=".json,.jsonc,.jsonl,.ndjson,.json5,.txt,.log,application/json,text/plain" hidden>
 
 <dialog id="help" aria-labelledby="helpTitle">
@@ -169,6 +190,10 @@
     </table>
     <p>On a Mac, use <kbd>Cmd</kbd> for <kbd>Ctrl</kbd> and <kbd>Option</kbd> for <kbd>Alt</kbd>.</p>
 
+    <h3>LAYOUT AND THE STDIN EDITOR</h3>
+    <p>Drag the bar between stdin and stdout to resize them; double-click it, or press <kbd>Enter</kbd> on it, to reset. With the bar focused, the arrow keys move it. <kbd>max</kbd> makes one pane fill the window and <kbd>restore</kbd> brings both back. The sizes are remembered, side by side and stacked separately. The <kbd>convert</kbd> menu holds yaml, csv, ts and schema.</p>
+    <p>Under stdin, <kbd>wrap</kbd> wraps long lines (line numbers and the error line are hidden while it is on), <kbd>A-</kbd> and <kbd>A+</kbd> change the text size and the size button resets it. <kbd>syntax</kbd> colours the text and boxes the bracket next to the caret together with its partner, or flags it when it has none. It switches itself off for input over 200 KB, where drawing it again on every change would slow typing. The line and column of the caret are on the left.</p>
+
     <h3>SAVED INPUT AND DISPLAY</h3>
     <p>Both tabs are kept in this browser between visits, however large. If the browser cannot keep an input, a note says so. The <kbd>crt</kbd> button turns scanlines and glow off. The page also drops them, and brightens dim text and borders, when your system asks for more contrast.</p>
 
@@ -187,6 +212,7 @@
 <script src="js/schema.js"></script>
 <script src="js/hints.js"></script>
 <script src="js/find.js"></script>
+<script src="js/layout.js"></script>
 <script src="js/modes.js"></script>
 <script src="js/app.js"></script>
 </body>

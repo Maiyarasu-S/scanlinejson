@@ -33,7 +33,9 @@ You hand it JSON, even broken JSON. It hands you back something you can actually
 - **Shape-shifter.** Turn it into YAML, CSV, TypeScript interfaces or a JSON Schema.
 - **Spot the difference.** Compare tab a against tab b, or check a against a schema in tab b.
 - **JWT peeker.** Paste a bare token and it decodes the contents. It never verifies the signature, so don't trust what it shows.
-- **Three moods.** Green phosphor, amber, or ice. The `crt` button turns scanlines and glow off if they get too dramatic.
+- **Three moods.** Green phosphor, amber, or ice. The theme button shows the current one and what the next click gives. The `crt` button turns scanlines and glow off if they get too dramatic.
+- **Your layout.** Drag the divider between stdin and stdout (double-click resets), maximise either pane, wrap long lines, change the text size. All remembered.
+- **A friendly editor.** stdin is coloured as you type and shows the bracket that matches the one at the caret. It switches off above 200 KB so typing stays quick.
 
 ## The part you'll like
 
@@ -93,6 +95,7 @@ The rule of the house: only one file touches the page. Everything else is plain 
 | `js/diff.js`, `js/schema.js` | Structural diff and JSON Schema validation |
 | `js/hints.js` | Spots Unix times, links, JWTs, base64 and JSON hiding inside strings |
 | `js/find.js`, `js/modes.js` | The search box; output modes and which state the page starts in |
+| `js/layout.js` | The divider and text-size arithmetic, bracket matching and the stdin colours |
 | `js/app.js` | The only file that touches the DOM |
 | `fonts/` | IBM Plex Mono and VT323 as `woff2`, with their licences |
 | `pages/`, `site.config.json` | One entry per tool page, sample inputs, and the site name and address |
