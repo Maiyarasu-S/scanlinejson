@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const dir = path.join(__dirname, '..', 'js');
-for (const f of ['core.js', 'query.js', 'convert.js', 'diff.js', 'schema.js', 'hints.js', 'find.js', 'layout.js', 'modes.js'])
+for (const f of ['core.js', 'query.js', 'convert.js', 'diff.js', 'schema.js', 'hints.js', 'find.js', 'layout.js', 'keys.js', 'modes.js'])
   vm.runInThisContext(fs.readFileSync(path.join(dir, f), 'utf8'), { filename: f });
 
 const C = JF.core;
@@ -337,6 +337,22 @@ ok(/<span class="k">&quot;a&quot;<\/span>/.test(LY.highlight('{"a":1}', null)) &
 eq((LY.highlight('[]', { at: 0, to: 1 }).match(/<mark/g) || []).length, 2, 'highlight marks both brackets of a pair');
 ok(/<mark data-m="0" class="now">/.test(LY.highlight('[', { at: 0, to: -1 })), 'highlight flags a bracket with no partner');
 ok(LY.HL_MAX === 200000, 'syntax colours stop above 200,000 characters');
+
+/* ---------- shortcuts: every page-wide key and the action it runs ---------- */
+const KY = JF.keys, kk = (key, o, typing) => KY.lookup(Object.assign({ key, code: '', ctrl: false, meta: false, alt: false, shift: false }, o), !!typing);
+const alt = (code, key) => kk(key || '', { alt: true, code });
+eq([alt('KeyQ'), alt('KeyC'), alt('KeyM'), alt('KeyS'), alt('KeyF'), alt('KeyT'), alt('Digit1'), alt('Digit2')],
+  ['query', 'copy', 'minify', 'sort', 'fold', 'theme', 'tabA', 'tabB'], 'keys: every Alt shortcut');
+eq(alt('KeyX'), null, 'keys: an unused Alt key is not ours');
+eq([kk('f', { ctrl: true }), kk('F', { meta: true }), kk('s', { ctrl: true }), kk('Enter', { ctrl: true }), kk('Enter', { meta: true })],
+  ['find', 'find', 'save', 'format', 'format'], 'keys: Ctrl (or Cmd) F, S and Enter');
+eq([kk('f', { ctrl: true }, true), kk('s', { ctrl: true }, true), kk('Enter', { ctrl: true }, true)], ['find', 'save', 'format'], 'keys: Ctrl shortcuts work inside a text field');
+eq([kk('f', { ctrl: true, shift: true }), kk('s', { ctrl: true, alt: true })], [null, null], 'keys: Ctrl+Shift+F and Ctrl+Alt+S are left to the browser');
+eq([kk('z', { ctrl: true }), kk('y', { ctrl: true }), kk('z', { ctrl: true, shift: true }), kk('Z', { meta: true, shift: true })], ['undo', 'redo', 'redo', 'redo'], 'keys: undo and redo outside a text field');
+eq([kk('z', { ctrl: true }, true), kk('y', { ctrl: true }, true)], [null, null], 'keys: inside a text field undo and redo belong to the field');
+eq([kk('/'), kk('?'), kk('Escape')], ['find', 'help', 'closeInsp'], 'keys: / ? and Esc outside a text field');
+eq([kk('/', {}, true), kk('?', {}, true), kk('Escape', {}, true), kk('/', { alt: true }), kk('/', { ctrl: true })], [null, null, null, null, null], 'keys: plain keys are ignored while typing, or with Alt or Ctrl held');
+eq([kk('a'), kk('Enter'), kk('Tab')], [null, null, null], 'keys: other keys are not ours');
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

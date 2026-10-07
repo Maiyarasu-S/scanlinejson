@@ -96,6 +96,7 @@ The rule of the house: only one file touches the page. Everything else is plain 
 | `js/hints.js` | Spots Unix times, links, JWTs, base64 and JSON hiding inside strings |
 | `js/find.js`, `js/modes.js` | The search box; output modes and which state the page starts in |
 | `js/layout.js` | The divider and text-size arithmetic, bracket matching and the stdin colours |
+| `js/keys.js` | Which action each page-wide shortcut runs (tested in Node; `app.js` carries the actions out) |
 | `js/app.js` | The only file that touches the DOM |
 | `fonts/` | IBM Plex Mono and VT323 as `woff2`, with their licences |
 | `pages/`, `site.config.json` | One entry per tool page, sample inputs, and the site name and address |

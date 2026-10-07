@@ -977,17 +977,18 @@ function sync() {
   document.querySelectorAll('[data-buf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.buf === st.buf));
   bufs.a.el.hidden = st.buf !== 'a'; bufs.b.el.hidden = st.buf !== 'b';
   sortBtn.setAttribute('aria-pressed', st.sort);
-  sortBtn.disabled = !(TREE[m] || m === 'min' || m === 'yaml');
-  foldBtn.disabled = !TREE[m];
+  sortBtn.disabled = !can('sort');
+  foldBtn.disabled = !can('fold');
   qwrap.classList.toggle('has', qEl.value !== '');
   cmd.textContent = JF.modes.prompt(st);
   fadeAll();
   if (themeMeta) themeMeta.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
 }
 function syncButtons() {
-  copyBtn.disabled = saveBtn.disabled = !hasOut;
-  fmtBtn.disabled = active().state !== 'ok';
-  undoBtn.disabled = !hist.length;
+  copyBtn.disabled = !can('copy');
+  saveBtn.disabled = !can('save');
+  fmtBtn.disabled = !can('format');
+  undoBtn.disabled = !can('undo');
 }
 /* ---------- layout: the stdin editor, the divider, maximise, the convert menu, toolbar fades ---------- */
 /* Text size and wrapping. A size of 0 leaves the stylesheet's own (13px, 16px on a phone). */
@@ -1255,16 +1256,42 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
 document.querySelectorAll('[data-ind]').forEach(b => b.addEventListener('click', () => { st.ind = b.dataset.ind; sync(); save(); render(); }));
 document.querySelectorAll('[data-scope]').forEach(b => b.addEventListener('click', () => { st.scope = b.dataset.scope; sync(); save(); if (findEl.value) render(); }));
 document.querySelectorAll('[data-buf]').forEach(b => b.addEventListener('click', () => { setBuf(b.dataset.buf); active().el.focus(); }));
-sortBtn.addEventListener('click', () => { st.sort = !st.sort; sync(); save(); render(); });
-foldBtn.addEventListener('click', () => { if (!TREE[st.mode] || !view) return; folded = !folded; select(null); drawTree(folded ? 1 : Infinity); footer(active()); });
-copyBtn.addEventListener('click', () => { if (hasOut) copyVia(copyBtn, text()); });
-saveBtn.addEventListener('click', saveFile);
-fmtBtn.addEventListener('click', formatInPlace);
-undoBtn.addEventListener('click', undo);
-shareBtn.addEventListener('click', share);
-themeBtn.addEventListener('click', () => { st.theme = THEMES[(THEMES.indexOf(st.theme) + 1) % THEMES.length]; sync(); save(); });
-fxBtn.addEventListener('click', () => { st.fx = !st.fx; sync(); save(); });
-$('helpBtn').addEventListener('click', () => help.showModal());
+/* ---------- actions ----------
+   Everything the toolbar, a shortcut (keys.js) or, later, a menu or a command can do is one entry here. `can` says whether
+   it applies right now (buttons use it for their disabled state), `run` does it. A shortcut therefore never depends on a
+   button being on screen. */
+const ACTIONS = {
+  copy:   { can: () => hasOut, run: () => copyVia(copyBtn, text()) },
+  save:   { can: () => hasOut, run: saveFile },
+  format: { can: () => active().state === 'ok', run: formatInPlace },
+  undo:   { can: () => hist.length > 0, run: undo },
+  redo:   { can: () => redo.length > 0, run: redoIt },
+  share:  { can: () => true, run: share },
+  sort:   { can: () => !!(TREE[st.mode] || st.mode === 'min' || st.mode === 'yaml'), run: () => { st.sort = !st.sort; sync(); save(); render(); } },
+  fold:   { can: () => !!TREE[st.mode], run: () => { if (!view) return; folded = !folded; select(null); drawTree(folded ? 1 : Infinity); footer(active()); } },
+  theme:  { can: () => true, run: () => { st.theme = THEMES[(THEMES.indexOf(st.theme) + 1) % THEMES.length]; sync(); save(); } },
+  crt:    { can: () => true, run: () => { st.fx = !st.fx; sync(); save(); } },
+  minify: { can: () => true, run: () => setMode(st.mode === 'min' ? 'pretty' : 'min') },
+  query:  { can: () => true, run: () => { qEl.focus(); qEl.select(); } },
+  find:   { can: () => true, run: () => { showPane('out'); findEl.focus(); findEl.select(); } },
+  tabA:   { can: () => true, run: () => { showPane('in'); setBuf('a'); active().el.focus(); } },
+  tabB:   { can: () => true, run: () => { showPane('in'); setBuf('b'); active().el.focus(); } },
+  help:   { can: () => true, run: () => help.showModal() },
+  closeInsp: { can: () => !insp.hidden, run: () => select(null) },
+};
+const can = id => ACTIONS[id].can();
+function act(id) { if (can(id)) ACTIONS[id].run(); }
+
+sortBtn.addEventListener('click', () => act('sort'));
+foldBtn.addEventListener('click', () => act('fold'));
+copyBtn.addEventListener('click', () => act('copy'));
+saveBtn.addEventListener('click', () => act('save'));
+fmtBtn.addEventListener('click', () => act('format'));
+undoBtn.addEventListener('click', () => act('undo'));
+shareBtn.addEventListener('click', () => act('share'));
+themeBtn.addEventListener('click', () => act('theme'));
+fxBtn.addEventListener('click', () => act('crt'));
+$('helpBtn').addEventListener('click', () => act('help'));
 /* two clicks, so a stray one cannot wipe anything */
 const wipeBtn = $('wipe');
 wipeBtn.addEventListener('click', () => {
@@ -1345,29 +1372,13 @@ findEl.addEventListener('keydown', e => {
 addEventListener('keydown', e => {
   if (help.open) return;
   const mod = e.ctrlKey || e.metaKey, tag = e.target.tagName, typing = tag === 'INPUT' || tag === 'TEXTAREA';
-  if (mod && !e.altKey && !e.shiftKey) {
-    const k = e.key.toLowerCase();
-    if (k === 'f') { if (document.activeElement !== findEl) { e.preventDefault(); showPane('out'); findEl.focus(); findEl.select(); } return; }   /* a second Ctrl+F reaches the browser's own find */
-    if (k === 's') { e.preventDefault(); saveFile(); return; }
-    if (e.key === 'Enter') { e.preventDefault(); formatInPlace(); return; }
-  }
-  if (e.altKey && !mod) {
-    const act = { KeyQ: () => { qEl.focus(); qEl.select(); }, KeyC: () => copyBtn.click(), KeyM: () => setMode(st.mode === 'min' ? 'pretty' : 'min'),
-                  KeyS: () => sortBtn.click(), KeyF: () => foldBtn.click(), KeyT: () => themeBtn.click(),
-                  Digit1: () => { showPane('in'); setBuf('a'); active().el.focus(); }, Digit2: () => { showPane('in'); setBuf('b'); active().el.focus(); } }[e.code];
-    if (act) { e.preventDefault(); act(); }
-    return;
-  }
-  if (mod && !e.altKey && !typing) {              /* undo and redo also work when focus is on a button or the tree */
-    const k = e.key.toLowerCase();
-    if (k === 'z' && !e.shiftKey && hist.length) { e.preventDefault(); undo(); }
-    else if ((k === 'y' || (k === 'z' && e.shiftKey)) && redo.length) { e.preventDefault(); redoIt(); }
-    return;
-  }
-  if (typing || mod) return;
-  if (e.key === '/') { e.preventDefault(); showPane('out'); findEl.focus(); findEl.select(); }
-  else if (e.key === '?') { e.preventDefault(); help.showModal(); }
-  else if (e.key === 'Escape' && !insp.hidden) select(null);
+  const id = JF.keys.lookup({ key: e.key, code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, shift: e.shiftKey }, typing);
+  if (!id) return;
+  /* a second Ctrl+F reaches the browser's own find. Undo and redo, and Esc on the inspector, leave the key alone when there is nothing to do. */
+  if (id === 'find' && mod && document.activeElement === findEl) return;
+  if ((id === 'undo' || id === 'redo' || id === 'closeInsp') && !can(id)) return;
+  if (id !== 'closeInsp') e.preventDefault();
+  act(id);
 });
 addEventListener('hashchange', async () => {
   const d = await readShared();
