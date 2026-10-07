@@ -70,6 +70,10 @@ for (const pg of [...pages, notFound]) {
     ...[...html.matchAll(/url\(\s*['"]?([^'")\s]+)/g)].map(m => m[1]), ...[...html.matchAll(/@import\s+(?:url\()?['"]?([^'")\s;]+)/g)].map(m => m[1]),
   ].filter(Boolean);
   ok(!loads.some(external), name + ': no external requests', loads.filter(external));
+  /* a favicon search engines can use: root-relative links, and a square size that is a multiple of 48px */
+  const icons = tags(html, 'link').filter(a => /^icon$/.test(a.rel));
+  const big = icons.filter(a => (a.sizes || '').split(/\s+/).some(s => { const m = /^(\d+)x\1$/.exec(s); return m && +m[1] >= 48 && +m[1] % 48 === 0; }));
+  ok(icons.length >= 2 && icons.every(a => a.href.startsWith('/')) && big.length >= 1, name + ': favicon links are root-relative and include a size that is a multiple of 48px', icons.map(a => a.href + ' ' + (a.sizes || '')));
   for (const u of loads.filter(u => !u.startsWith('data:'))) { const f = target(pg.url, u); ok(f && fs.existsSync(f), name + ': loads a file that exists: ' + u); }
   for (const a of tags(html, 'img')) ok(a.width && a.height, name + ': image has width and height', a.src);
 
@@ -120,7 +124,7 @@ for (const pg of [...pages, notFound]) {
 
   /* the tool opens in the page's mode, and the prompt line says so */
   const seed = JSON.parse((/<script type="application\/json" id="page">([\s\S]*?)<\/script>/.exec(html) || [, '{}'])[1]);
-  const pressed = tags(html, 'button').filter(a => a['data-mode'] && a['aria-pressed'] === 'true').map(a => a['data-mode']);
+  const pressed = tags(html, 'button').filter(a => a['data-mode'] && (a['aria-pressed'] === 'true' || a['aria-checked'] === 'true')).map(a => a['data-mode']);
   const cmd = (/<span id="cmd">([^<]*)<\/span>/.exec(html) || [])[1];
   ok(ctx.JF.modes.isMode(seed.mode) && pressed.join() === seed.mode && cmd === ctx.JF.modes.prompt({ mode: seed.mode }), name + ': opens in its mode with a matching prompt', { mode: seed.mode, pressed, cmd });
 

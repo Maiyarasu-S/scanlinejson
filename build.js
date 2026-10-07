@@ -160,8 +160,11 @@ function site() {
       '<meta name="twitter:title" content="' + esc(p.title) + '">',
       '<meta name="twitter:description" content="' + esc(p.metaDescription) + '">',
       '<meta name="twitter:image" content="' + esc(img) + '">',
-      '<link rel="icon" href="' + rel + 'favicon.ico" sizes="32x32">',
-      '<link rel="icon" href="' + rel + 'favicon.svg" type="image/svg+xml">',
+      /* Search engines want one stable address for the icon and a square size that is a multiple of 48px: the .ico
+         holds 16, 32 and 48, the PNG is 192, the SVG is any size. Root-relative, so every page names the same files. */
+      '<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">',
+      '<link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any">',
+      '<link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">',
       '<link rel="apple-touch-icon" href="' + rel + 'apple-touch-icon.png">',
       '<link rel="manifest" href="' + rel + 'site.webmanifest">',
       ...preload.map(f => '<link rel="preload" href="' + rel + f + '" as="font" type="font/woff2" crossorigin>'),
@@ -186,6 +189,10 @@ function site() {
     rep(/<h1>[^<]*<\/h1>/, '<h1>' + esc(p.h1) + '</h1>');
     rep(/<span id="cmd">[^<]*<\/span>/, '<span id="cmd">' + esc(modes.prompt({ mode: p.mode, ind: '2', sort: false })) + '</span>');
     rep(/<button type="button" data-mode="(\w+)" aria-pressed="(true|false)"/g, (m, md) => '<button type="button" data-mode="' + md + '" aria-pressed="' + (md === p.mode) + '"');
+    /* the convert menu: its items and its button show the page's mode before any script runs */
+    rep(/<button type="button" role="menuitemradio" aria-checked="(?:true|false)" data-mode="(\w+)"/g, (m, md) => '<button type="button" role="menuitemradio" aria-checked="' + (md === p.mode) + '" data-mode="' + md + '"');
+    const conv = ['yaml', 'csv', 'ts', 'schema'].includes(p.mode);
+    rep(/(<button type="button" id="convert"[^>]*? aria-pressed=")false("[^>]*>)convert(<\/button>)/, (m, a, b, c) => conv ? a + 'true' + b + 'convert: ' + p.mode + c : m);
     rep('<main>', '<main class="with-doc">');
     rep('<!--page:doc-->', doc);
     rep('<!--page:site-->\n', siteFooter(rel, p.slug));
@@ -209,8 +216,9 @@ function site() {
 <meta name="theme-color" content="#040906">
 <meta name="robots" content="noindex">
 <title>Page not found | ${esc(cfg.name)}</title>
-<link rel="icon" href="/favicon.ico" sizes="32x32">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any">
+<link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
 <link rel="stylesheet" href="/${assets['css/style.css']}">
 <script defer src="/${notFoundJs}"></script>
 </head>

@@ -5,7 +5,7 @@
    render() then decides what stdout shows: a message, the tree, converted text, or a diff/validation list. */
 (() => {
 'use strict';
-const C = JF.core, H = JF.hints, V = JF.convert;
+const C = JF.core, H = JF.hints, V = JF.convert, L = JF.layout;
 const $ = id => document.getElementById(id);
 
 /* Stylesheets marked data-lazy are linked with media="print" so they do not hold up the first paint. Switch them on
@@ -19,7 +19,9 @@ const qEl = $('q'), qwrap = $('qwrap'), cmd = $('cmd'), stateEl = $('state'), th
       findEl = $('find'), findN = $('findN'), tree = $('tree'), pre = $('text'), list = $('list'), msg = $('msg'), insp = $('insp'),
       statsEl = $('stats'), qmsg = $('qmsg'), noteEl = $('note'), foldBtn = $('fold'), sortBtn = $('sort'), copyBtn = $('copy'), saveBtn = $('save'),
       fmtBtn = $('format'), undoBtn = $('undo'), shareBtn = $('share'), fxBtn = $('fx'),
-      themeMeta = document.querySelector('meta[name="theme-color"]');
+      themeMeta = document.querySelector('meta[name="theme-color"]'),
+      panes = document.querySelector('.panes'), splitEl = $('split'), ed = $('ed'), hlEl = $('hl'), hlin = $('hlin'), caretEl = $('caret'),
+      wrapBtn = $('wrap'), hlBtn = $('hlBtn'), fsDown = $('fsDown'), fsVal = $('fsVal'), fsUp = $('fsUp'), convertBtn = $('convert'), cmenu = $('cmenu');
 
 const KEY = 'scanline-json', CHUNK = 500;
 const WORKER_MIN = 500000;      /* characters. Below this, parsing on the spot takes a few tens of milliseconds */
@@ -40,7 +42,10 @@ const SAMPLE = String.raw`{"host":"node-07.lab.internal","online":true,"uptime_s
  "limits":"{\"max_conn\":512,\"burst\":[10,20,40]}","banner":"` + btoa('stay curious, stay kind') + String.raw`",
  "big_id":9007199254740993,"last_error":null,"motd":"hello, world — stay curious"}`;
 
-const st = { mode: 'pretty', ind: '2', sort: false, theme: 'green', buf: 'a', scope: 'all', fx: true };
+const st = { mode: 'pretty', ind: '2', sort: false, theme: 'green', buf: 'a', scope: 'all', fx: true,
+             split: L.normSplit(null), wrap: false, fs: 0, hl: true, max: '' };      /* max is not saved: a reload shows both panes */
+const CONVERT = { yaml: 1, csv: 1, ts: 1, schema: 1 };
+const stacked = matchMedia('(max-width:760px)');      /* the panes sit one above the other */
 const mkBuf = (id, el) => ({ id, el, state: 'empty', res: null, err: null, fixed: null, text: '', ms: 0, bytes: 0, name: '',
                              job: 0, worker: null, busy: false, sent: '', threaded: false, timer: 0, jwt: null });
 const bufs = { a: mkBuf('a', $('srcA')), b: mkBuf('b', $('srcB')) };
@@ -177,7 +182,7 @@ function render() {
   select(null);
   if (!TREE[st.mode]) findN.textContent = '';
   const act = active(), two = TWO[st.mode];
-  if (act.state === 'err' && !act.jwt) { errline.hidden = false; posErr(); } else errline.hidden = true;
+  if (act.state === 'err' && !act.jwt && !st.wrap) { errline.hidden = false; posErr(); } else errline.hidden = true;
   let blocked = false;
   for (const id of two ? ['a', 'b'] : [st.buf]) {
     const b = bufs[id];
@@ -740,6 +745,7 @@ function drawGutter() {
     nums.textContent = t; gutWin = win;
   }
   nums.style.transform = 'translateY(' + (PAD + first * lh - el.scrollTop) + 'px)';
+  syncHl();
 }
 function updateGutter() {
   const v = active().el.value;
@@ -748,6 +754,7 @@ function updateGutter() {
   gutLines = lines;
   gut.style.minWidth = (String(lines).length + 2) + 'ch';
   drawGutter();
+  paintHl();
 }
 function setBuf(id, quiet) {
   st.buf = id;
@@ -757,6 +764,7 @@ function setBuf(id, quiet) {
   if (!quiet) render();
 }
 function jump(id, at) {
+  showPane('in');
   if (id !== st.buf) setBuf(id);
   const el = bufs[id].el, line = C.locate(el.value, at).line;
   el.focus();
@@ -853,14 +861,13 @@ function indent(b, out) {
 }
 
 /* The textareas get swapped out (see setValue), so their events are handled on the container. */
-const ed = $('ed');
 const bufOf = t => t === bufs.a.el ? bufs.a : t === bufs.b.el ? bufs.b : null;
 ed.addEventListener('input', e => {
   const b = bufOf(e.target);
   if (!b) return;
   paused = pristine = false;
   if (prog === b.id) prog = '';
-  if (b.id === st.buf) updateGutter();
+  if (b.id === st.buf) { updateGutter(); if (b.el.value.length < 60000) paintHl(true); }
   clearTimeout(b.timer);
   b.timer = setTimeout(() => analyse(b.id), b.el.value.length > 200000 ? 350 : 120);
 });
@@ -954,9 +961,14 @@ function sync() {
   const m = st.mode;
   document.documentElement.dataset.theme = st.theme;
   document.documentElement.dataset.fx = st.fx ? 'on' : 'off';
-  themeBtn.textContent = st.theme;
+  const nextTheme = THEMES[(THEMES.indexOf(st.theme) + 1) % THEMES.length];
+  themeBtn.textContent = 'theme: ' + st.theme;
+  themeBtn.title = 'Switch theme (Alt+T). Now ' + st.theme + ', next ' + nextTheme;
+  themeBtn.setAttribute('aria-label', 'Theme: ' + st.theme + '. Switch to ' + nextTheme);
   fxBtn.setAttribute('aria-pressed', st.fx);
-  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === m));
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute(b.getAttribute('role') === 'menuitemradio' ? 'aria-checked' : 'aria-pressed', b.dataset.mode === m));
+  convertBtn.setAttribute('aria-pressed', !!CONVERT[m]);
+  convertBtn.textContent = CONVERT[m] ? 'convert: ' + m : 'convert';
   document.querySelectorAll('[data-ind]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.ind === st.ind); b.disabled = !(TREE[m] || m === 'yaml' || m === 'ts'); });
   /* text output has no reliable split into keys and values, so there the search covers everything */
   document.querySelectorAll('[data-scope]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.scope === st.scope); b.disabled = !!TEXT[m]; });
@@ -965,17 +977,185 @@ function sync() {
   document.querySelectorAll('[data-buf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.buf === st.buf));
   bufs.a.el.hidden = st.buf !== 'a'; bufs.b.el.hidden = st.buf !== 'b';
   sortBtn.setAttribute('aria-pressed', st.sort);
-  sortBtn.disabled = !(TREE[m] || m === 'min' || m === 'yaml');
-  foldBtn.disabled = !TREE[m];
+  sortBtn.disabled = !can('sort');
+  foldBtn.disabled = !can('fold');
   qwrap.classList.toggle('has', qEl.value !== '');
   cmd.textContent = JF.modes.prompt(st);
+  fadeAll();
   if (themeMeta) themeMeta.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
 }
 function syncButtons() {
-  copyBtn.disabled = saveBtn.disabled = !hasOut;
-  fmtBtn.disabled = active().state !== 'ok';
-  undoBtn.disabled = !hist.length;
+  copyBtn.disabled = !can('copy');
+  saveBtn.disabled = !can('save');
+  fmtBtn.disabled = !can('format');
+  undoBtn.disabled = !can('undo');
 }
+/* ---------- layout: the stdin editor, the divider, maximise, the convert menu, toolbar fades ---------- */
+/* Text size and wrapping. A size of 0 leaves the stylesheet's own (13px, 16px on a phone). */
+function applyEditor() {
+  if (st.fs) { const m = L.metrics(st.fs); ed.style.setProperty('--efs', m.fs + 'px'); ed.style.setProperty('--elh', m.lh + 'px'); }
+  else { ed.style.removeProperty('--efs'); ed.style.removeProperty('--elh'); }
+  ed.classList.toggle('wrap', st.wrap);
+  for (const id of ['a', 'b']) bufs[id].el.wrap = st.wrap ? 'soft' : 'off';
+  lineHpx = 0; gutWin = '';
+  const now = Math.round(parseFloat(getComputedStyle(ed).fontSize)) || 13;
+  fsVal.textContent = now + 'px';
+  fsDown.disabled = now <= L.FS_MIN; fsUp.disabled = now >= L.FS_MAX;
+  wrapBtn.setAttribute('aria-pressed', st.wrap);
+  const a = active();
+  errline.hidden = st.wrap || !(a.state === 'err' && !a.jwt);
+  updateGutter(); posErr();
+}
+const stepFs = by => { st.fs = L.normFs((parseFloat(getComputedStyle(ed).fontSize) || 13) + by); applyEditor(); save(); };
+fsDown.addEventListener('click', () => stepFs(-1));
+fsUp.addEventListener('click', () => stepFs(1));
+fsVal.addEventListener('click', () => { st.fs = 0; applyEditor(); save(); });
+wrapBtn.addEventListener('click', () => { st.wrap = !st.wrap; applyEditor(); save(); });
+hlBtn.addEventListener('click', () => { st.hl = !st.hl; paintHl(true); save(); });
+
+/* Syntax colours and bracket matching: the text is drawn in #hl behind the textarea (see style.css). Off above
+   HL_MAX characters, where drawing it all again on each change would be felt. */
+let hlRaf = 0, hlText = null, hlKey = '', hlPairs = null;
+function syncHl() {
+  const el = active().el;
+  hlEl.style.setProperty('--sbw', (el.offsetWidth - el.clientWidth) + 'px');
+  hlin.style.transform = 'translate(' + (-el.scrollLeft) + 'px,' + (-el.scrollTop) + 'px)';
+}
+function paintHl(now) {
+  if (now) { cancelAnimationFrame(hlRaf); hlRaf = 0; drawHl(); return; }
+  if (!hlRaf) hlRaf = requestAnimationFrame(() => { hlRaf = 0; drawHl(); });
+}
+function drawHl() {
+  const el = active().el, v = el.value, on = st.hl && v.length <= L.HL_MAX;
+  hlBtn.setAttribute('aria-pressed', st.hl);
+  hlBtn.textContent = st.hl && !on ? 'syntax: off' : 'syntax';
+  ed.classList.toggle('hl-on', on);
+  if (!on) { hlin.textContent = ''; hlText = null; return; }
+  if (v !== hlText) { hlText = v; hlPairs = null; hlKey = '#'; }
+  let touch = null;
+  if (document.activeElement === el && el.selectionStart === el.selectionEnd) {
+    const at = el.selectionStart, near = c => c !== undefined && '{}[]'.indexOf(c) >= 0;
+    if (near(v[at - 1]) || near(v[at])) { hlPairs = hlPairs || L.pairs(v); touch = L.touching(v, at, hlPairs); }
+  }
+  const key = touch ? touch.at + ':' + touch.to : '';
+  if (key !== hlKey) { hlKey = key; hlin.innerHTML = L.highlight(v, touch); }
+  syncHl();
+}
+/* where the caret is, and the bracket it touches */
+function showCaret() {
+  const el = active().el;
+  if (document.activeElement !== el) { paintHl(); return; }
+  const v = el.value, a = el.selectionStart, z = el.selectionEnd;
+  if (v.length > 1000000) caretEl.textContent = 'char ' + (a + 1).toLocaleString('en');      /* counting lines in a huge text on every key is not worth it */
+  else { const p = L.caretPos(v, a); caretEl.textContent = 'ln ' + p.line.toLocaleString('en') + ', col ' + p.col; }
+  if (z > a) caretEl.textContent += ' (' + (z - a).toLocaleString('en') + ' selected)';
+  paintHl();
+}
+let caretRaf = 0;
+document.addEventListener('selectionchange', () => { if (!caretRaf) caretRaf = requestAnimationFrame(() => { caretRaf = 0; showCaret(); }); });
+ed.addEventListener('focusin', () => paintHl());
+ed.addEventListener('focusout', () => paintHl());
+
+/* The divider. Each layout (side by side, stacked) remembers its own ratio. */
+const ratio = () => stacked.matches ? st.split.v : st.split.h;
+function applySplit() {
+  const [a, b] = L.shares(ratio());
+  panes.style.setProperty('--a', a + 'fr'); panes.style.setProperty('--b', b + 'fr');
+  splitEl.setAttribute('aria-valuenow', Math.round(ratio() * 100));
+  splitEl.setAttribute('aria-orientation', stacked.matches ? 'horizontal' : 'vertical');
+  relayout();
+}
+function setRatio(r) { if (stacked.matches) st.split.v = r; else st.split.h = r; applySplit(); }
+/* the editor changed size: redraw what depends on it */
+function relayout() { lineHpx = 0; gutWin = ''; drawGutter(); posErr(); fadeAll(); }
+let dragging = false;
+splitEl.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  splitEl.focus({ preventScroll: true });
+  dragging = true; splitEl.setPointerCapture(e.pointerId); panes.classList.add('dragging');
+});
+splitEl.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const r = panes.getBoundingClientRect(), s = splitEl.getBoundingClientRect(), v = stacked.matches;
+  setRatio(L.ratioAt(v ? e.clientY : e.clientX, v ? r.top : r.left, v ? r.height : r.width, v ? s.height : s.width, v ? 120 : 200));
+});
+const endDrag = () => { if (!dragging) return; dragging = false; panes.classList.remove('dragging'); save(); };
+splitEl.addEventListener('pointerup', endDrag);
+splitEl.addEventListener('pointercancel', endDrag);
+splitEl.addEventListener('lostpointercapture', endDrag);
+splitEl.addEventListener('dblclick', () => { setRatio(stacked.matches ? L.SPLIT_DEFAULT.v : L.SPLIT_DEFAULT.h); save(); });
+splitEl.addEventListener('keydown', e => {
+  const back = stacked.matches ? 'ArrowUp' : 'ArrowLeft', fwd = stacked.matches ? 'ArrowDown' : 'ArrowRight';
+  let r = null;
+  if (e.key === back) r = L.nudge(ratio(), -0.03);
+  else if (e.key === fwd) r = L.nudge(ratio(), 0.03);
+  else if (e.key === 'Home') r = 0;
+  else if (e.key === 'End') r = 1;
+  else if (e.key === 'Enter') r = stacked.matches ? L.SPLIT_DEFAULT.v : L.SPLIT_DEFAULT.h;
+  if (r === null) return;
+  e.preventDefault();
+  setRatio(L.clampRatio(r)); save();
+});
+/* Maximise: one pane fills the window. Not saved; a reload shows both. */
+function setMax(which) {
+  st.max = which;
+  if (which) panes.dataset.fill = which; else delete panes.dataset.fill;
+  for (const b of document.querySelectorAll('[data-max]')) {
+    const on = b.dataset.max === which;
+    b.setAttribute('aria-pressed', on); b.textContent = on ? 'restore' : 'max';
+  }
+  relayout();
+}
+/* a shortcut that needs the pane that is hidden brings both back */
+const showPane = which => { if (st.max && st.max !== which) setMax(''); };
+document.querySelectorAll('[data-max]').forEach(b => b.addEventListener('click', () => setMax(st.max === b.dataset.max ? '' : b.dataset.max)));
+stacked.addEventListener('change', () => { applySplit(); applyEditor(); });
+const applyLayout = () => { applySplit(); applyEditor(); };
+
+/* A toolbar that is wider than its pane scrolls sideways. Fade the edge that still has buttons behind it. */
+const scrollers = [...document.querySelectorAll('.bar > .acts')];
+function fade(el) {
+  const l = el.scrollLeft > 1, r = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+  if (l || r) el.dataset.fade = l && r ? 'lr' : l ? 'l' : 'r'; else delete el.dataset.fade;
+}
+function fadeAll() { scrollers.forEach(fade); }
+scrollers.forEach(el => el.addEventListener('scroll', () => { fade(el); closeMenu(); }, { passive: true }));
+if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(fadeAll); scrollers.forEach(el => ro.observe(el)); }
+addEventListener('resize', () => { fadeAll(); closeMenu(); });
+
+/* The convert menu. Fixed-position, so the sideways-scrolling toolbar cannot clip it. */
+function openMenu(focusFirst) {
+  const r = convertBtn.getBoundingClientRect();
+  cmenu.hidden = false;
+  cmenu.style.left = Math.max(4, Math.min(r.left, innerWidth - cmenu.offsetWidth - 4)) + 'px';
+  cmenu.style.top = (r.bottom + 2) + 'px';
+  convertBtn.setAttribute('aria-expanded', 'true');
+  if (focusFirst) (cmenu.querySelector('[aria-checked="true"]') || cmenu.firstElementChild).focus();
+}
+function closeMenu(refocus) {
+  if (cmenu.hidden) return;
+  cmenu.hidden = true;
+  convertBtn.setAttribute('aria-expanded', 'false');
+  if (refocus) convertBtn.focus();
+}
+convertBtn.addEventListener('click', () => { if (cmenu.hidden) openMenu(false); else closeMenu(); });
+convertBtn.addEventListener('keydown', e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(true); } });
+cmenu.addEventListener('click', e => { if (e.target.closest('[data-mode]')) closeMenu(true); });
+cmenu.addEventListener('keydown', e => {
+  const items = [...cmenu.querySelectorAll('button')], i = items.indexOf(document.activeElement), k = e.key;
+  if (k === 'ArrowDown') items[(i + 1) % items.length].focus();
+  else if (k === 'ArrowUp') items[(i - 1 + items.length) % items.length].focus();
+  else if (k === 'Home') items[0].focus();
+  else if (k === 'End') items[items.length - 1].focus();
+  else if (k === 'Escape') closeMenu(true);
+  else if (k === 'Tab') { closeMenu(); return; }
+  else return;
+  e.preventDefault();
+});
+document.addEventListener('pointerdown', e => { if (!cmenu.hidden && !cmenu.contains(e.target) && !convertBtn.contains(e.target)) closeMenu(); });
+addEventListener('blur', () => closeMenu());
+
 /* ---------- persistence ----------
    Settings are small and live in localStorage under KEY. Tab text can run to many megabytes, so it goes to
    IndexedDB, written a moment after the last change and again when the page is hidden. Where IndexedDB is
@@ -1016,7 +1196,7 @@ async function loadTabs(saved) {
   return fromLS();
 }
 function writeSettings() {
-  const s = { mode: st.mode, ind: st.ind, sort: st.sort, theme: st.theme, buf: st.buf, scope: st.scope, fx: st.fx, where };
+  const s = { mode: st.mode, ind: st.ind, sort: st.sort, theme: st.theme, buf: st.buf, scope: st.scope, fx: st.fx, where, split: st.split, wrap: st.wrap, fs: st.fs, hl: st.hl };
   if (legacy) { s.s = legacy.s; s.b = legacy.b; }
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
 }
@@ -1076,16 +1256,42 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
 document.querySelectorAll('[data-ind]').forEach(b => b.addEventListener('click', () => { st.ind = b.dataset.ind; sync(); save(); render(); }));
 document.querySelectorAll('[data-scope]').forEach(b => b.addEventListener('click', () => { st.scope = b.dataset.scope; sync(); save(); if (findEl.value) render(); }));
 document.querySelectorAll('[data-buf]').forEach(b => b.addEventListener('click', () => { setBuf(b.dataset.buf); active().el.focus(); }));
-sortBtn.addEventListener('click', () => { st.sort = !st.sort; sync(); save(); render(); });
-foldBtn.addEventListener('click', () => { if (!TREE[st.mode] || !view) return; folded = !folded; select(null); drawTree(folded ? 1 : Infinity); footer(active()); });
-copyBtn.addEventListener('click', () => { if (hasOut) copyVia(copyBtn, text()); });
-saveBtn.addEventListener('click', saveFile);
-fmtBtn.addEventListener('click', formatInPlace);
-undoBtn.addEventListener('click', undo);
-shareBtn.addEventListener('click', share);
-themeBtn.addEventListener('click', () => { st.theme = THEMES[(THEMES.indexOf(st.theme) + 1) % THEMES.length]; sync(); save(); });
-fxBtn.addEventListener('click', () => { st.fx = !st.fx; sync(); save(); });
-$('helpBtn').addEventListener('click', () => help.showModal());
+/* ---------- actions ----------
+   Everything the toolbar, a shortcut (keys.js) or, later, a menu or a command can do is one entry here. `can` says whether
+   it applies right now (buttons use it for their disabled state), `run` does it. A shortcut therefore never depends on a
+   button being on screen. */
+const ACTIONS = {
+  copy:   { can: () => hasOut, run: () => copyVia(copyBtn, text()) },
+  save:   { can: () => hasOut, run: saveFile },
+  format: { can: () => active().state === 'ok', run: formatInPlace },
+  undo:   { can: () => hist.length > 0, run: undo },
+  redo:   { can: () => redo.length > 0, run: redoIt },
+  share:  { can: () => true, run: share },
+  sort:   { can: () => !!(TREE[st.mode] || st.mode === 'min' || st.mode === 'yaml'), run: () => { st.sort = !st.sort; sync(); save(); render(); } },
+  fold:   { can: () => !!TREE[st.mode], run: () => { if (!view) return; folded = !folded; select(null); drawTree(folded ? 1 : Infinity); footer(active()); } },
+  theme:  { can: () => true, run: () => { st.theme = THEMES[(THEMES.indexOf(st.theme) + 1) % THEMES.length]; sync(); save(); } },
+  crt:    { can: () => true, run: () => { st.fx = !st.fx; sync(); save(); } },
+  minify: { can: () => true, run: () => setMode(st.mode === 'min' ? 'pretty' : 'min') },
+  query:  { can: () => true, run: () => { qEl.focus(); qEl.select(); } },
+  find:   { can: () => true, run: () => { showPane('out'); findEl.focus(); findEl.select(); } },
+  tabA:   { can: () => true, run: () => { showPane('in'); setBuf('a'); active().el.focus(); } },
+  tabB:   { can: () => true, run: () => { showPane('in'); setBuf('b'); active().el.focus(); } },
+  help:   { can: () => true, run: () => help.showModal() },
+  closeInsp: { can: () => !insp.hidden, run: () => select(null) },
+};
+const can = id => ACTIONS[id].can();
+function act(id) { if (can(id)) ACTIONS[id].run(); }
+
+sortBtn.addEventListener('click', () => act('sort'));
+foldBtn.addEventListener('click', () => act('fold'));
+copyBtn.addEventListener('click', () => act('copy'));
+saveBtn.addEventListener('click', () => act('save'));
+fmtBtn.addEventListener('click', () => act('format'));
+undoBtn.addEventListener('click', () => act('undo'));
+shareBtn.addEventListener('click', () => act('share'));
+themeBtn.addEventListener('click', () => act('theme'));
+fxBtn.addEventListener('click', () => act('crt'));
+$('helpBtn').addEventListener('click', () => act('help'));
 /* two clicks, so a stray one cannot wipe anything */
 const wipeBtn = $('wipe');
 wipeBtn.addEventListener('click', () => {
@@ -1107,7 +1313,7 @@ msg.addEventListener('click', e => {
   else if (act === 'fix') applyFix(b.dataset.buf);
   else if (act === 'jwt') { const t = bufs[b.dataset.buf]; if (t.jwt) replaceInput(t.id, JSON.stringify(t.jwt), t.name); }
   else if (act === 'jump') jump(b.dataset.buf, +b.dataset.at);
-  else if (act === 'tab') { setBuf(b.dataset.buf); active().el.focus(); }
+  else if (act === 'tab') { showPane('in'); setBuf(b.dataset.buf); active().el.focus(); }
   else if (act === 'gen') replaceInput('b', C.ser(V.schema(bufs.a.res.root), indStr(), plain, false), 'schema.json');
   else if (act === 'clearq') setQuery('');
   else if (act === 'clearfind') { findEl.value = ''; render(); findEl.focus(); }
@@ -1166,29 +1372,13 @@ findEl.addEventListener('keydown', e => {
 addEventListener('keydown', e => {
   if (help.open) return;
   const mod = e.ctrlKey || e.metaKey, tag = e.target.tagName, typing = tag === 'INPUT' || tag === 'TEXTAREA';
-  if (mod && !e.altKey && !e.shiftKey) {
-    const k = e.key.toLowerCase();
-    if (k === 'f') { if (document.activeElement !== findEl) { e.preventDefault(); findEl.focus(); findEl.select(); } return; }   /* a second Ctrl+F reaches the browser's own find */
-    if (k === 's') { e.preventDefault(); saveFile(); return; }
-    if (e.key === 'Enter') { e.preventDefault(); formatInPlace(); return; }
-  }
-  if (e.altKey && !mod) {
-    const act = { KeyQ: () => { qEl.focus(); qEl.select(); }, KeyC: () => copyBtn.click(), KeyM: () => setMode(st.mode === 'min' ? 'pretty' : 'min'),
-                  KeyS: () => sortBtn.click(), KeyF: () => foldBtn.click(), KeyT: () => themeBtn.click(),
-                  Digit1: () => { setBuf('a'); active().el.focus(); }, Digit2: () => { setBuf('b'); active().el.focus(); } }[e.code];
-    if (act) { e.preventDefault(); act(); }
-    return;
-  }
-  if (mod && !e.altKey && !typing) {              /* undo and redo also work when focus is on a button or the tree */
-    const k = e.key.toLowerCase();
-    if (k === 'z' && !e.shiftKey && hist.length) { e.preventDefault(); undo(); }
-    else if ((k === 'y' || (k === 'z' && e.shiftKey)) && redo.length) { e.preventDefault(); redoIt(); }
-    return;
-  }
-  if (typing || mod) return;
-  if (e.key === '/') { e.preventDefault(); findEl.focus(); findEl.select(); }
-  else if (e.key === '?') { e.preventDefault(); help.showModal(); }
-  else if (e.key === 'Escape' && !insp.hidden) select(null);
+  const id = JF.keys.lookup({ key: e.key, code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, shift: e.shiftKey }, typing);
+  if (!id) return;
+  /* a second Ctrl+F reaches the browser's own find. Undo and redo, and Esc on the inspector, leave the key alone when there is nothing to do. */
+  if (id === 'find' && mod && document.activeElement === findEl) return;
+  if ((id === 'undo' || id === 'redo' || id === 'closeInsp') && !can(id)) return;
+  if (id !== 'closeInsp') e.preventDefault();
+  act(id);
 });
 addEventListener('hashchange', async () => {
   const d = await readShared();
@@ -1213,6 +1403,7 @@ addEventListener('hashchange', async () => {
     if (THEMES.indexOf(saved.theme) >= 0) st.theme = saved.theme;
     if (saved.scope === 'all' || saved.scope === 'keys' || saved.scope === 'values') st.scope = saved.scope;
     if (saved.fx === false) st.fx = false;
+    st.split = L.normSplit(saved.split); st.wrap = saved.wrap === true; st.fs = L.normFs(saved.fs); if (saved.hl === false) st.hl = false;
     if (saved.where === 'idb' || saved.where === 'ls') where = saved.where;
     st.sort = !!saved.sort;
   }
@@ -1227,7 +1418,7 @@ addEventListener('hashchange', async () => {
   /* settings without text: an older version could not keep input over 200,000 characters */
   if (s.from === 'lost' && saved.s === null) notify('the last input was too large for this browser to keep, so it could not be restored', 'err');
   booted = true;
-  sync(); updateGutter();
+  sync(); applyLayout();
   analyse('b'); analyse('a');
 })();
 
