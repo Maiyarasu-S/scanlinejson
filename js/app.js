@@ -21,7 +21,7 @@ const qEl = $('q'), qwrap = $('qwrap'), cmd = $('cmd'), stateEl = $('state'), th
       fmtBtn = $('format'), undoBtn = $('undo'), shareBtn = $('share'), fxBtn = $('fx'),
       themeMeta = document.querySelector('meta[name="theme-color"]'),
       panes = document.querySelector('.panes'), splitEl = $('split'), ed = $('ed'), hlEl = $('hl'), hlin = $('hlin'), caretEl = $('caret'),
-      wrapBtn = $('wrap'), hlBtn = $('hlBtn'), fsDown = $('fsDown'), fsVal = $('fsVal'), fsUp = $('fsUp'), convertBtn = $('convert'), cmenu = $('cmenu');
+      wrapBtn = $('wrap'), hlBtn = $('hlBtn'), fsDown = $('fsDown'), fsVal = $('fsVal'), fsUp = $('fsUp'), viewBtn = $('view'), moreBtn = $('more'), findBtn = $('findBtn'), findBar = $('findbar'), scopeBtn = $('scope'), findX = $('findX');
 
 const KEY = 'scanline-json', CHUNK = 500;
 const WORKER_MIN = 500000;      /* characters. Below this, parsing on the spot takes a few tens of milliseconds */
@@ -44,7 +44,7 @@ const SAMPLE = String.raw`{"host":"node-07.lab.internal","online":true,"uptime_s
 
 const st = { mode: 'pretty', ind: '2', sort: false, theme: 'green', buf: 'a', scope: 'all', fx: true,
              split: L.normSplit(null), wrap: false, fs: 0, hl: true, max: '' };      /* max is not saved: a reload shows both panes */
-const CONVERT = { yaml: 1, csv: 1, ts: 1, schema: 1 };
+const SCOPES = ['all', 'keys', 'values'];
 const stacked = matchMedia('(max-width:760px)');      /* the panes sit one above the other */
 const mkBuf = (id, el) => ({ id, el, state: 'empty', res: null, err: null, fixed: null, text: '', ms: 0, bytes: 0, name: '',
                              job: 0, worker: null, busy: false, sent: '', threaded: false, timer: 0, jwt: null });
@@ -445,7 +445,7 @@ function kids(nd, path, from, od, lv) {
 
 function drawTree(od) {
   if (od === undefined) folded = false;
-  foldBtn.textContent = folded ? 'unfold' : 'fold';
+  foldBtn.querySelector('.l').textContent = folded ? 'unfold all' : 'fold all';
   note = '';
   const searching = prepSearch(troot);
   reg = [];
@@ -918,7 +918,7 @@ function saveFile() {
   a.href = url; a.download = base + ext;
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
-  flash(saveBtn, 'saved');
+  notify('saved ' + base + ext);
 }
 
 /* A share link carries the input in the URL fragment: deflate, then base64url. The fragment never reaches a server. */
@@ -957,6 +957,8 @@ async function readShared() {
 }
 
 /* ---------- controls ---------- */
+/* a pressed button or a checked menu item */
+const setOn = (b, on) => b.setAttribute(/^menuitem(radio|checkbox)$/.test(b.getAttribute('role')) ? 'aria-checked' : 'aria-pressed', on);
 function sync() {
   const m = st.mode;
   document.documentElement.dataset.theme = st.theme;
@@ -966,17 +968,16 @@ function sync() {
   themeBtn.title = 'Switch theme (Alt+T). Now ' + st.theme + ', next ' + nextTheme;
   themeBtn.setAttribute('aria-label', 'Theme: ' + st.theme + '. Switch to ' + nextTheme);
   fxBtn.setAttribute('aria-pressed', st.fx);
-  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute(b.getAttribute('role') === 'menuitemradio' ? 'aria-checked' : 'aria-pressed', b.dataset.mode === m));
-  convertBtn.setAttribute('aria-pressed', !!CONVERT[m]);
-  convertBtn.textContent = CONVERT[m] ? 'convert: ' + m : 'convert';
-  document.querySelectorAll('[data-ind]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.ind === st.ind); b.disabled = !(TREE[m] || m === 'yaml' || m === 'ts'); });
+  document.querySelectorAll('[data-mode]').forEach(b => setOn(b, b.dataset.mode === m));
+  viewBtn.textContent = 'view: ' + JF.modes.label(m);
+  document.querySelectorAll('[data-ind]').forEach(b => { setOn(b, b.dataset.ind === st.ind); b.disabled = !(TREE[m] || m === 'yaml' || m === 'ts'); });
   /* text output has no reliable split into keys and values, so there the search covers everything */
-  document.querySelectorAll('[data-scope]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.scope === st.scope); b.disabled = !!TEXT[m]; });
+  scopeBtn.textContent = 'in: ' + st.scope; scopeBtn.disabled = !!TEXT[m];
   findEl.placeholder = TEXT[m] ? 'search the output' : 'search keys and values';
   findEl.setAttribute('aria-label', TEXT[m] ? 'Search the output' : 'Search keys and values');
   document.querySelectorAll('[data-buf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.buf === st.buf));
   bufs.a.el.hidden = st.buf !== 'a'; bufs.b.el.hidden = st.buf !== 'b';
-  sortBtn.setAttribute('aria-pressed', st.sort);
+  setOn(sortBtn, st.sort);
   sortBtn.disabled = !can('sort');
   foldBtn.disabled = !can('fold');
   qwrap.classList.toggle('has', qEl.value !== '');
@@ -989,6 +990,9 @@ function syncButtons() {
   saveBtn.disabled = !can('save');
   fmtBtn.disabled = !can('format');
   undoBtn.disabled = !can('undo');
+  /* diff and validate need tab b: say so in the menu, but leave them selectable so stdout can explain what to do */
+  const needB = bufs.b.state === 'empty';
+  document.querySelectorAll('#vmenu [data-hint]').forEach(h => { h.textContent = needB ? 'needs tab b' : h.dataset.hint; });
 }
 /* ---------- layout: the stdin editor, the divider, maximise, the convert menu, toolbar fades ---------- */
 /* Text size and wrapping. A size of 0 leaves the stylesheet's own (13px, 16px on a phone). */
@@ -1103,7 +1107,9 @@ function setMax(which) {
   if (which) panes.dataset.fill = which; else delete panes.dataset.fill;
   for (const b of document.querySelectorAll('[data-max]')) {
     const on = b.dataset.max === which;
-    b.setAttribute('aria-pressed', on); b.textContent = on ? 'restore' : 'max';
+    const l = b.querySelector('.l');
+    if (l) l.textContent = on ? 'restore both panes' : 'fill window';
+    else { b.setAttribute('aria-pressed', on); b.textContent = on ? 'restore' : 'max'; }
   }
   relayout();
 }
@@ -1124,36 +1130,55 @@ scrollers.forEach(el => el.addEventListener('scroll', () => { fade(el); closeMen
 if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(fadeAll); scrollers.forEach(el => ro.observe(el)); }
 addEventListener('resize', () => { fadeAll(); closeMenu(); });
 
-/* The convert menu. Fixed-position, so the sideways-scrolling toolbar cannot clip it. */
-function openMenu(focusFirst) {
-  const r = convertBtn.getBoundingClientRect();
-  cmenu.hidden = false;
-  cmenu.style.left = Math.max(4, Math.min(r.left, innerWidth - cmenu.offsetWidth - 4)) + 'px';
-  cmenu.style.top = (r.bottom + 2) + 'px';
-  convertBtn.setAttribute('aria-expanded', 'true');
-  if (focusFirst) (cmenu.querySelector('[aria-checked="true"]') || cmenu.firstElementChild).focus();
+/* Menus: the view and "more" buttons each open one. A menu is fixed-position, so the sideways-scrolling toolbar cannot clip it.
+   Items run their own handler (data-mode, data-ind, data-max) or an action from the table (data-do). */
+const menus = [[viewBtn, $('vmenu')], [moreBtn, $('mmenu')]].map(([btn, el]) => ({ btn, el }));
+let openMenuNow = null;
+const menuItems = m => [...m.el.querySelectorAll('button:not(:disabled)')];
+function openMenu(m, focusFirst) {
+  closeMenu();
+  const r = m.btn.getBoundingClientRect();
+  m.el.hidden = false;
+  m.el.style.left = Math.max(4, Math.min(r.left, innerWidth - m.el.offsetWidth - 4)) + 'px';
+  m.el.style.top = (r.bottom + 2) + 'px';
+  m.btn.setAttribute('aria-expanded', 'true');
+  openMenuNow = m;
+  if (focusFirst) (m.el.querySelector('[aria-checked="true"]:not(:disabled)') || menuItems(m)[0]).focus();
 }
 function closeMenu(refocus) {
-  if (cmenu.hidden) return;
-  cmenu.hidden = true;
-  convertBtn.setAttribute('aria-expanded', 'false');
-  if (refocus) convertBtn.focus();
+  const m = openMenuNow;
+  if (!m) return;
+  openMenuNow = null;
+  m.el.hidden = true;
+  m.btn.setAttribute('aria-expanded', 'false');
+  if (refocus) m.btn.focus();
 }
-convertBtn.addEventListener('click', () => { if (cmenu.hidden) openMenu(false); else closeMenu(); });
-convertBtn.addEventListener('keydown', e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(true); } });
-cmenu.addEventListener('click', e => { if (e.target.closest('[data-mode]')) closeMenu(true); });
-cmenu.addEventListener('keydown', e => {
-  const items = [...cmenu.querySelectorAll('button')], i = items.indexOf(document.activeElement), k = e.key;
-  if (k === 'ArrowDown') items[(i + 1) % items.length].focus();
-  else if (k === 'ArrowUp') items[(i - 1 + items.length) % items.length].focus();
-  else if (k === 'Home') items[0].focus();
-  else if (k === 'End') items[items.length - 1].focus();
-  else if (k === 'Escape') closeMenu(true);
-  else if (k === 'Tab') { closeMenu(); return; }
-  else return;
-  e.preventDefault();
-});
-document.addEventListener('pointerdown', e => { if (!cmenu.hidden && !cmenu.contains(e.target) && !convertBtn.contains(e.target)) closeMenu(); });
+for (const m of menus) {
+  m.btn.addEventListener('click', () => { if (openMenuNow === m) closeMenu(); else openMenu(m, false); });
+  m.btn.addEventListener('keydown', e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(m, true); } });
+  m.el.addEventListener('click', e => {
+    const it = e.target.closest('button');
+    if (!it || it.disabled) return;
+    const id = it.dataset.do;
+    closeMenu(id !== 'find');                     /* search takes the focus itself */
+    if (id) act(id);
+  });
+  m.el.addEventListener('keydown', e => {
+    const items = menuItems(m), i = items.indexOf(document.activeElement), k = e.key;
+    if (k === 'ArrowDown') items[(i + 1) % items.length].focus();
+    else if (k === 'ArrowUp') items[(i - 1 + items.length) % items.length].focus();
+    else if (k === 'Home') items[0].focus();
+    else if (k === 'End') items[items.length - 1].focus();
+    else if (k === 'Escape') closeMenu(true);
+    else if (k === 'Tab') { closeMenu(); return; }
+    else return;
+    e.preventDefault();
+  });
+}
+/* a click or the focus going anywhere else closes the open menu */
+const outsideMenu = e => { const m = openMenuNow; if (m && !m.el.contains(e.target) && !m.btn.contains(e.target)) closeMenu(); };
+document.addEventListener('pointerdown', outsideMenu);
+document.addEventListener('focusin', outsideMenu);
 addEventListener('blur', () => closeMenu());
 
 /* ---------- persistence ----------
@@ -1241,7 +1266,7 @@ async function clearSaved() {
   stored = legacy = null; where = '';
   hist.length = redo.length = 0;
   for (const id of ['b', 'a']) { setValue(bufs[id], ''); bufs[id].name = ''; }
-  qEl.value = ''; findEl.value = '';
+  qEl.value = ''; findEl.value = ''; closeFind();
   if (st.buf !== 'a') setBuf('a', true);
   sync(); updateGutter();
   analyse('b'); analyse('a');
@@ -1254,7 +1279,7 @@ function setQuery(q) { qEl.value = q === '$' ? '' : q; sync(); save(); render();
 
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 document.querySelectorAll('[data-ind]').forEach(b => b.addEventListener('click', () => { st.ind = b.dataset.ind; sync(); save(); render(); }));
-document.querySelectorAll('[data-scope]').forEach(b => b.addEventListener('click', () => { st.scope = b.dataset.scope; sync(); save(); if (findEl.value) render(); }));
+scopeBtn.addEventListener('click', () => { st.scope = SCOPES[(SCOPES.indexOf(st.scope) + 1) % SCOPES.length]; sync(); save(); if (findEl.value) render(); });
 document.querySelectorAll('[data-buf]').forEach(b => b.addEventListener('click', () => { setBuf(b.dataset.buf); active().el.focus(); }));
 /* ---------- actions ----------
    Everything the toolbar, a shortcut (keys.js) or, later, a menu or a command can do is one entry here. `can` says whether
@@ -1273,7 +1298,7 @@ const ACTIONS = {
   crt:    { can: () => true, run: () => { st.fx = !st.fx; sync(); save(); } },
   minify: { can: () => true, run: () => setMode(st.mode === 'min' ? 'pretty' : 'min') },
   query:  { can: () => true, run: () => { qEl.focus(); qEl.select(); } },
-  find:   { can: () => true, run: () => { showPane('out'); findEl.focus(); findEl.select(); } },
+  find:   { can: () => true, run: () => { showPane('out'); openFind(true); } },
   tabA:   { can: () => true, run: () => { showPane('in'); setBuf('a'); active().el.focus(); } },
   tabB:   { can: () => true, run: () => { showPane('in'); setBuf('b'); active().el.focus(); } },
   help:   { can: () => true, run: () => help.showModal() },
@@ -1282,10 +1307,7 @@ const ACTIONS = {
 const can = id => ACTIONS[id].can();
 function act(id) { if (can(id)) ACTIONS[id].run(); }
 
-sortBtn.addEventListener('click', () => act('sort'));
-foldBtn.addEventListener('click', () => act('fold'));
 copyBtn.addEventListener('click', () => act('copy'));
-saveBtn.addEventListener('click', () => act('save'));
 fmtBtn.addEventListener('click', () => act('format'));
 undoBtn.addEventListener('click', () => act('undo'));
 shareBtn.addEventListener('click', () => act('share'));
@@ -1330,7 +1352,21 @@ qEl.addEventListener('keydown', e => {
   else if (e.key === 'Escape') { if (qEl.value) { e.preventDefault(); clearTimeout(qTimer); setQuery(''); } else qEl.blur(); }
 });
 
-/* search box */
+/* search box. The row is closed until asked for (Ctrl+F, /, the magnifier, the menu) and stays open while it holds text. */
+function openFind(focus) {
+  findBar.hidden = false;
+  findBtn.setAttribute('aria-expanded', 'true');
+  if (focus) { findEl.focus(); findEl.select(); }
+}
+function closeFind() {
+  if (findEl.value) return;
+  findBar.hidden = true;
+  findBtn.setAttribute('aria-expanded', 'false');
+}
+findBtn.addEventListener('click', () => { if (findBar.hidden) openFind(true); else if (findEl.value) { findEl.focus(); findEl.select(); } else closeFind(); });
+findX.addEventListener('click', () => { findEl.value = ''; refind(); closeFind(); findBtn.focus(); });
+/* clicking a button inside the row does not focus it in every browser (Safari), so the pointer counts as being inside too */
+findBar.addEventListener('focusout', () => setTimeout(() => { const at = document.activeElement; if (!findBar.contains(at) && at !== findBtn && !findBar.matches(':hover')) closeFind(); }, 0));
 function hopText(dir) {
   if (!tq || !tq.n) return;
   const was = pre.querySelectorAll('mark.now');
@@ -1365,7 +1401,7 @@ function refind() {
 }
 findEl.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); hop(e.shiftKey ? -1 : 1); }
-  else if (e.key === 'Escape') { if (findEl.value) { e.preventDefault(); findEl.value = ''; refind(); } else findEl.blur(); }
+  else if (e.key === 'Escape') { e.preventDefault(); if (findEl.value) { findEl.value = ''; refind(); } else { closeFind(); findBtn.focus(); } }
 });
 
 /* page-wide shortcuts */

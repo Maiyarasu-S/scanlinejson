@@ -77,45 +77,23 @@
 
   <section class="pane" id="outPane" aria-label="Output">
     <div class="bar">
-      <div class="ttl">
-        <h2>stdout</h2>
-        <div class="acts"><button type="button" id="maxOut" data-max="out" aria-pressed="false" title="Fill the window with stdout">max</button></div>
-      </div>
+      <div class="ttl"><h2>stdout</h2></div>
       <div class="acts">
-        <div class="seg" role="group" aria-label="JSON view">
-          <button type="button" data-mode="pretty" aria-pressed="true">pretty</button>
-          <button type="button" data-mode="min" aria-pressed="false">minify</button>
-        </div>
-        <div class="seg" role="group" aria-label="Convert">
-          <button type="button" id="convert" aria-haspopup="menu" aria-expanded="false" aria-controls="cmenu" aria-pressed="false" title="Convert to YAML, CSV, TypeScript or a JSON Schema">convert</button>
-        </div>
-        <div class="seg" role="group" aria-label="Compare tabs a and b">
-          <button type="button" data-mode="diff" aria-pressed="false" title="Structural diff of tab a against tab b">diff</button>
-          <button type="button" data-mode="check" aria-pressed="false" title="Validate tab a against the JSON Schema in tab b">validate</button>
-        </div>
+        <button type="button" id="view" class="mb" aria-haspopup="menu" aria-expanded="false" aria-controls="vmenu" title="How stdout is shown: pretty, minify, yaml, csv, ts, schema, diff, validate (Alt+M toggles minify)">view: pretty</button>
+        <button type="button" id="copy" class="primary" title="Copy the output (Alt+C)">copy</button>
+        <button type="button" id="findBtn" aria-expanded="false" aria-controls="findbar" aria-label="Search the output" title="Search the output (Ctrl+F or /)"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 10l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg></button>
+        <button type="button" id="more" class="mb dots" aria-haspopup="menu" aria-expanded="false" aria-controls="mmenu" aria-label="More: indent, sort keys, fold, save" title="More: indent, sort keys, fold, save">&middot;&middot;&middot;</button>
       </div>
     </div>
-    <div class="bar">
+    <div class="bar findbar" id="findbar" hidden>
       <div class="find">
         <label for="find" aria-hidden="true">/</label>
         <input id="find" type="search" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Search keys and values" placeholder="search keys and values">
         <span id="findN" role="status"></span>
-        <div class="acts"><div class="seg" role="group" aria-label="Search in">
-          <button type="button" data-scope="all" aria-pressed="true">all</button>
-          <button type="button" data-scope="keys" aria-pressed="false">keys</button>
-          <button type="button" data-scope="values" aria-pressed="false">values</button>
-        </div></div>
-      </div>
-      <div class="acts">
-        <div class="seg" role="group" aria-label="Indent">
-          <button type="button" data-ind="2" aria-pressed="true">2</button>
-          <button type="button" data-ind="4" aria-pressed="false">4</button>
-          <button type="button" data-ind="tab" aria-pressed="false">tab</button>
+        <div class="acts">
+          <button type="button" id="scope" title="What the search looks at: keys and values, only keys, or only values">in: all</button>
+          <button type="button" id="findX" aria-label="Close search" title="Close search (Esc)">x</button>
         </div>
-        <button type="button" id="sort" aria-pressed="false">sort keys</button>
-        <button type="button" id="fold">fold</button>
-        <button type="button" id="copy">copy</button>
-        <button type="button" id="save" title="Download the output as a file (Ctrl+S)">save</button>
       </div>
     </div>
     <div class="out">
@@ -138,11 +116,29 @@
 <!--page:doc-->
 </main>
 <!--page:site-->
-<div id="cmenu" class="menu" role="menu" aria-label="Convert to" hidden>
+<div id="vmenu" class="menu" role="menu" aria-label="Show stdout as" hidden>
+  <button type="button" role="menuitemradio" aria-checked="true" data-mode="pretty">pretty<span>formatted tree</span></button>
+  <button type="button" role="menuitemradio" aria-checked="false" data-mode="min">minify<span>no whitespace</span></button>
+  <div role="separator"></div>
   <button type="button" role="menuitemradio" aria-checked="false" data-mode="yaml">yaml</button>
   <button type="button" role="menuitemradio" aria-checked="false" data-mode="csv">csv</button>
   <button type="button" role="menuitemradio" aria-checked="false" data-mode="ts">ts<span>typescript interfaces</span></button>
   <button type="button" role="menuitemradio" aria-checked="false" data-mode="schema">schema<span>json schema</span></button>
+  <div role="separator"></div>
+  <button type="button" role="menuitemradio" aria-checked="false" data-mode="diff" title="Structural diff of tab a against tab b">diff<span data-hint="tab a against tab b">tab a against tab b</span></button>
+  <button type="button" role="menuitemradio" aria-checked="false" data-mode="check" title="Validate tab a against the JSON Schema in tab b">validate<span data-hint="a against schema in b">a against schema in b</span></button>
+</div>
+<div id="mmenu" class="menu" role="menu" aria-label="More output options" hidden>
+  <button type="button" role="menuitemradio" aria-checked="true" data-ind="2">indent: 2</button>
+  <button type="button" role="menuitemradio" aria-checked="false" data-ind="4">indent: 4</button>
+  <button type="button" role="menuitemradio" aria-checked="false" data-ind="tab">indent: tab</button>
+  <div role="separator"></div>
+  <button type="button" id="sort" role="menuitemcheckbox" aria-checked="false" data-do="sort"><b class="l">sort keys</b><span>Alt+S</span></button>
+  <button type="button" id="fold" role="menuitem" data-do="fold"><b class="l">fold all</b><span>Alt+F</span></button>
+  <button type="button" id="save" role="menuitem" data-do="save" title="Download the output as a file"><b class="l">save as file</b><span>Ctrl+S</span></button>
+  <button type="button" role="menuitem" data-do="find"><b class="l">search</b><span>Ctrl+F</span></button>
+  <div role="separator"></div>
+  <button type="button" id="maxOut" role="menuitem" data-max="out"><b class="l">fill window</b></button>
 </div>
 <input type="file" id="file" accept=".json,.jsonc,.jsonl,.ndjson,.json5,.txt,.log,application/json,text/plain" hidden>
 
@@ -177,7 +173,7 @@
 
     <h3>KEYS</h3>
     <table>
-      <tr><td><kbd>Ctrl+F</kbd> or <kbd>/</kbd></td><td>search the output: the tree, or the text of minify, yaml, csv and ts. <kbd>Enter</kbd> next match, <kbd>Shift+Enter</kbd> previous. Write <kbd>/pattern/</kbd> for a regular expression. In text output the keys and values buttons are off, and diff and validate switch to the tree</td></tr>
+      <tr><td><kbd>Ctrl+F</kbd> or <kbd>/</kbd></td><td>search the output: the tree, or the text of minify, yaml, csv and ts. <kbd>Enter</kbd> next match, <kbd>Shift+Enter</kbd> previous. Write <kbd>/pattern/</kbd> for a regular expression. The search row opens when you ask for it and stays open while it holds text; <kbd>Esc</kbd> clears it, and a second <kbd>Esc</kbd> closes it. The <kbd>in: all</kbd> button cycles between keys and values, keys only and values only. In text output it is off, and diff and validate switch to the tree</td></tr>
       <tr><td><kbd>Alt+Q</kbd></td><td>go to the query prompt. <kbd>Esc</kbd> clears it</td></tr>
       <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>move in the tree. Left and right fold and unfold, with <kbd>Shift</kbd> they do the whole branch</td></tr>
       <tr><td><kbd>Enter</kbd> / <kbd>Ctrl+C</kbd> in the tree</td><td>fold or expand the row / copy the selected value</td></tr>
@@ -191,7 +187,7 @@
     <p>On a Mac, use <kbd>Cmd</kbd> for <kbd>Ctrl</kbd> and <kbd>Option</kbd> for <kbd>Alt</kbd>.</p>
 
     <h3>LAYOUT AND THE STDIN EDITOR</h3>
-    <p>Drag the bar between stdin and stdout to resize them; double-click it, or press <kbd>Enter</kbd> on it, to reset. With the bar focused, the arrow keys move it. <kbd>max</kbd> makes one pane fill the window and <kbd>restore</kbd> brings both back. The sizes are remembered, side by side and stacked separately. The <kbd>convert</kbd> menu holds yaml, csv, ts and schema.</p>
+    <p>Drag the bar between stdin and stdout to resize them; double-click it, or press <kbd>Enter</kbd> on it, to reset. With the bar focused, the arrow keys move it. <kbd>max</kbd> makes one pane fill the window and <kbd>restore</kbd> brings both back. The sizes are remembered, side by side and stacked separately. The <kbd>view</kbd> menu holds pretty, minify, yaml, csv, ts, schema, diff and validate; the <kbd>&middot;&middot;&middot;</kbd> menu holds indent, sort keys, fold, save and search, and <kbd>fill window</kbd> makes stdout fill the window.</p>
     <p>Under stdin, <kbd>wrap</kbd> wraps long lines (line numbers and the error line are hidden while it is on), <kbd>A-</kbd> and <kbd>A+</kbd> change the text size and the size button resets it. <kbd>syntax</kbd> colours the text and boxes the bracket next to the caret together with its partner, or flags it when it has none. It switches itself off for input over 200 KB, where drawing it again on every change would slow typing. The line and column of the caret are on the left.</p>
 
     <h3>SAVED INPUT AND DISPLAY</h3>

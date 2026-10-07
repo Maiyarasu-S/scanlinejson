@@ -34,6 +34,7 @@ You hand it JSON, even broken JSON. It hands you back something you can actually
 - **Spot the difference.** Compare tab a against tab b, or check a against a schema in tab b.
 - **JWT peeker.** Paste a bare token and it decodes the contents. It never verifies the signature, so don't trust what it shows.
 - **Three moods.** Green phosphor, amber, or ice. The theme button shows the current one and what the next click gives. The `crt` button turns scanlines and glow off if they get too dramatic.
+- **A calm output bar.** stdout has four controls: a `view` menu (pretty, minify, yaml, csv, ts, schema, diff, validate), `copy`, a search icon and a `···` menu with indent, sort keys, fold, save and fill window. Search opens with Ctrl+F or `/` and stays open while it holds text. Every shortcut still works with the menus closed.
 - **Your layout.** Drag the divider between stdin and stdout (double-click resets), maximise either pane, wrap long lines, change the text size. All remembered.
 - **A friendly editor.** stdin is coloured as you type and shows the bracket that matches the one at the caret. It switches off above 200 KB so typing stays quick.
 

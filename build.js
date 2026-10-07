@@ -188,11 +188,9 @@ function site() {
     rep(/<link rel="stylesheet" href="(css\/[^"]+)"/g, (m, f) => '<link rel="stylesheet" href="' + rel + assets[f] + '"');
     rep(/<h1>[^<]*<\/h1>/, '<h1>' + esc(p.h1) + '</h1>');
     rep(/<span id="cmd">[^<]*<\/span>/, '<span id="cmd">' + esc(modes.prompt({ mode: p.mode, ind: '2', sort: false })) + '</span>');
-    rep(/<button type="button" data-mode="(\w+)" aria-pressed="(true|false)"/g, (m, md) => '<button type="button" data-mode="' + md + '" aria-pressed="' + (md === p.mode) + '"');
-    /* the convert menu: its items and its button show the page's mode before any script runs */
+    /* the view menu: its items and its button show the page's mode before any script runs */
     rep(/<button type="button" role="menuitemradio" aria-checked="(?:true|false)" data-mode="(\w+)"/g, (m, md) => '<button type="button" role="menuitemradio" aria-checked="' + (md === p.mode) + '" data-mode="' + md + '"');
-    const conv = ['yaml', 'csv', 'ts', 'schema'].includes(p.mode);
-    rep(/(<button type="button" id="convert"[^>]*? aria-pressed=")false("[^>]*>)convert(<\/button>)/, (m, a, b, c) => conv ? a + 'true' + b + 'convert: ' + p.mode + c : m);
+    rep(/(<button type="button" id="view"[^>]*>)view: pretty(<\/button>)/, (m, a, b) => a + 'view: ' + modes.label(p.mode) + b);
     rep('<main>', '<main class="with-doc">');
     rep('<!--page:doc-->', doc);
     rep('<!--page:site-->\n', siteFooter(rel, p.slug));

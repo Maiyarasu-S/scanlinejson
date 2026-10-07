@@ -128,6 +128,9 @@ for (const pg of [...pages, notFound]) {
   const cmd = (/<span id="cmd">([^<]*)<\/span>/.exec(html) || [])[1];
   ok(ctx.JF.modes.isMode(seed.mode) && pressed.join() === seed.mode && cmd === ctx.JF.modes.prompt({ mode: seed.mode }), name + ': opens in its mode with a matching prompt', { mode: seed.mode, pressed, cmd });
 
+  const viewBtn = (/<button[^>]* id="view"[^>]*>([^<]*)<\/button>/.exec(html) || [])[1];
+  ok(viewBtn === 'view: ' + ctx.JF.modes.label(seed.mode), name + ': the view button names the opening mode', viewBtn);
+
   const entry = inMap.find(u => u.loc === canon);
   ok(entry, name + ': listed in the sitemap');
   ok(entry && /^\d{4}-\d{2}-\d{2}$/.test(entry.lastmod), name + ': sitemap lastmod is a date', entry && entry.lastmod);
